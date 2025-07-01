@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block titulo %}Manutenção{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+
+</head>
+<body class="pagina-base">
+
+  {% if current_user.is_authenticated %}
+  <!-- MENU SUPERIOR -->
+  <header class="navbar">
+    <div class="navbar-logo">
+      <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo">
+      <span class="sistema-titulo">Gestão de Manutenção  </span>
+    </div>
+    <nav class="navbar-menu">
+      <ul>
+        <li><a href="{{ url_for('main.index') }}">Início</a></li>
+
+        {% if current_user.tipo == 'master' %}
+          <li><a href="{{ url_for('main.gerenciar_usuarios') }}">Usuários</a></li>
+          <li><a href="{{ url_for('main.exibir_logs') }}">Logs</a></li>
+        {% endif %}
+
+        <!-- UNIDADES -->
+        <li class="dropdown">
+        <a href="#" class="dropdown-toggle" onclick="toggleDropdown('unidades-menu'); return false;">Unidades ▾</a>
+        <ul class="dropdown-menu" id="unidades-menu">
+
+            <li><a href="{{ url_for('main.lista_placas') }}">Todas as Placas</a></li>
+            <li><a href="{{ url_for('main.filtrar_unidade', unidade='BAGAM') }}">BAGAM</a></li>
+            <li><a href="{{ url_for('main.filtrar_unidade', unidade='BACRO') }}">BACRO</a></li>
+            <li><a href="{{ url_for('main.filtrar_unidade', unidade='SPOT RN') }}">SPOT RN</a></li>
+            <li><a href="{{ url_for('main.filtrar_unidade', unidade='SPOT PE') }}">SPOT PE</a></li>
+            <li><a href="{{ url_for('main.filtrar_unidade', unidade='SMART') }}">SMART</a></li>
+          </ul>
+        </li>
+
+        <!-- AÇÕES -->
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('acoes-menu'); return false;">Ações ▾</a>
+          <ul class="dropdown-menu dropdown" id="acoes-menu">
+            <li><a href="{{ url_for('main.realizar_manutencao') }}">Nova Manutenção</a></li>
+            <li><a href="{{ url_for('main.cadastro_veiculo') }}">Cadastrar Veículo</a></li>
+            <li><a href="{{ url_for('main.lista_placas') }}">📋 Veículos Cadastrados</a></li>
+          </ul>
+        </li>
+
+        <!-- SAIR -->
+        <li style="margin-left:auto;"><a href="{{ url_for('main.logout') }}">Sair</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- BOAS-VINDAS -->
+  <div class="boas-vindas">
+    👋 Bem-vindo, <strong>{{ current_user.nome }}</strong>! Que bom ter você de volta.
+  </div>
+  {% endif %}
+
+  <!-- CONTEÚDO -->
+  <div class="conteudo">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for categoria, msg in messages %}
+        <div class="mensagem {{ categoria }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block conteudo %}{% endblock %}
+  </div>
+
+  <!-- RODAPÉ -->
+  <div class="rodape">
+    Desenvolvido por 64Bits Informática &copy; {{ ano if ano else "2025" }}
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+  });
+
+  function toggleDropdown(id) {
+    const menu = document.getElementById(id);
+    const isOpen = menu.classList.contains('open');
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+    if (!isOpen) menu.classList.add('open');
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.dropdown')) {
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+    }
+  });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    console.log('Página carregada. Removendo dropdowns...');
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+  });
+</script>
+
+
+
+</body>
+</html>

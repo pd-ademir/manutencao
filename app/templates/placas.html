@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Painel de Veículos{% endblock %}
+
+{% block conteudo %}
+<div class="container">
+
+  <h1>Painel de Veículos</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-messages">
+        {% for category, message in messages %}
+          <li class="flash {{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  {% for unidade, veiculos in unidades.items() %}
+  <div class="unidade">
+    <h2>Unidade: {{ unidade }}</h2>
+    <table class="tabela-index">
+      <thead>
+        <tr>
+          <th>Motorista</th>
+          <th>Placa Cavalo</th>
+          <th>Engate 1</th>
+          <th>Engate 2</th>
+          <th>Modelo</th>
+          <th>Fabricante</th>
+          <th>Ano</th>
+          <th>KM Atual</th>
+          <th>Próx. Preventiva</th>
+          <th>Próx. Intermediária</th>
+          <th>Próx. Diferencial</th>
+          <th>Próx. Câmbio</th>
+          <th>Próx. Calibragem</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+  {% for v in veiculos %}
+    {% set vencido = (
+      (v.km_para_preventiva is not none and v.km_para_preventiva < 0) or
+      (v.km_para_intermediaria is not none and v.km_para_intermediaria < 0) or
+      (v.km_para_diferencial is not none and v.km_para_diferencial < 0) or
+      (v.km_para_cambio is not none and v.km_para_cambio < 0) or
+      (v.data_proxima_calibragem and v.data_proxima_calibragem <= current_date)
+    ) %}
+    <tr class="{{ 'alerta' if vencido else '' }}">
+      <td>{{ v.motorista }}</td>
+      <td>{{ v.placa }}</td>
+      <td>{{ v.placa_1 or '-' }}</td>
+      <td>{{ v.placa_2 or '-' }}</td>
+      <td>{{ v.modelo }}</td>
+      <td>{{ v.fabricante }}</td>
+      <td>{{ v.ano }}</td>
+
+      <td>
+        <form action="{{ url_for('main.atualizar_km', id=v.id) }}" method="POST" style="display: flex; gap: 6px;">
+          <input type="number" name="km_atual" value="{{ v.km_atual }}" class="form-control" style="max-width: 170px;" required>
+          <button type="submit" title="Atualizar KM" style="background: #28a745; border: none; color: white; padding: 3px 8px; border-radius: 4px;">✔️</button>
+        </form>
+      </td>
+
+      <td>
+        {% if v.km_para_preventiva is not none %}
+          {% if v.km_para_preventiva < 0 %}
+            <span class="vencida">VENCIDA ({{ v.km_para_preventiva | format_km }})</span>
+          {% else %}
+            {{ v.km_para_preventiva | format_km }}
+          {% endif %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if v.km_para_intermediaria is not none %}
+          {% if v.km_para_intermediaria < 0 %}
+            <span class="vencida">VENCIDA ({{ v.km_para_intermediaria | format_km }})</span>
+          {% else %}
+            {{ v.km_para_intermediaria | format_km }}
+          {% endif %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if v.km_para_diferencial is not none %}
+          {% if v.km_para_diferencial < 0 %}
+            <span class="vencida">VENCIDA ({{ v.km_para_diferencial | format_km }})</span>
+          {% else %}
+            {{ v.km_para_diferencial | format_km }}
+          {% endif %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if v.km_para_cambio is not none %}
+          {% if v.km_para_cambio < 0 %}
+            <span class="vencida">VENCIDA ({{ v.km_para_cambio | format_km }})</span>
+          {% else %}
+            {{ v.km_para_cambio | format_km }}
+          {% endif %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if v.data_proxima_calibragem %}
+          {% if v.data_proxima_calibragem <= current_date %}
+            <span class="vencida">VENCIDA ({{ v.data_proxima_calibragem.strftime('%d/%m/%Y') }})</span>
+          {% else %}
+            {{ v.data_proxima_calibragem.strftime('%d/%m/%Y') }}
+          {% endif %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        <a href="{{ url_for('main.cadastro_veiculo', id=v.id) }}" class="btn-azul" title="Editar">✏️</a>
+        <a href="{{ url_for('main.excluir_veiculo', id=v.id) }}" class="btn-vermelho", title="Excluir" onclick="return confirm('Deseja excluir {{ v.placa }}?')">🗑️</a>
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>
+
+    </table>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}
