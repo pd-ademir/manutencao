@@ -18,7 +18,9 @@
   <table class="tabela-index">
     <thead>
       <tr>
-        <th>Placa</th>
+        <th>Placa Cavalo</th>
+        <th>Engate 1</th>
+        <th>Engate 2</th>
         <th>Motorista</th>
         <th>Modelo</th>
         <th>KM Atual</th>
@@ -34,6 +36,8 @@
       {% for veiculo in veiculos %}
         <tr>
           <td>{{ veiculo.placa }}</td>
+          <td>{{ veiculo.placa_1 or '-' }}</td>
+          <td>{{ veiculo.placa_2 or '-' }}</td>
           <td>{{ veiculo.motorista }}</td>
           <td>{{ veiculo.modelo }}</td>
           <td>{{ veiculo.km_atual | format_km }}</td>
@@ -61,7 +65,7 @@
           <td>{{ veiculo.unidade }}</td>
         </tr>
       {% else %}
-        <tr><td colspan="10">Nenhum veículo com manutenção próxima.</td></tr>
+        <tr><td colspan="12">Nenhum veículo com manutenção próxima.</td></tr>
       {% endfor %}
     </tbody>
   </table>
