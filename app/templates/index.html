@@ -3,6 +3,15 @@
 
 {% block conteudo %}
 <h1>Painel de Manutenção</h1>
+
+{% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
+  <form action="{{ url_for('main.teste_alerta') }}" method="get">
+    <button class="btn btn-danger" style="margin-bottom: 15px; background: #28a745">
+      🔔 Disparar Alertas de Manutenção
+    </button>
+  </form>
+{% endif %}
+
 <p>Confira abaixo os veículos com revisões próximas do vencimento.</p>
 
 <div class="tabela-scroll">

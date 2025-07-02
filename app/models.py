@@ -135,7 +135,6 @@ def registrar_log(usuario, acao):
 # Apenas para testes iniciais — depois montamos o CRUD certo
 whatsapp_numeros = [
       # <- insira aqui seu número de teste
-    '+5584994017097',
-    '+5584991174367'
+    '18981430410'
 ]
 

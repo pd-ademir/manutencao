@@ -1,122 +1,140 @@
 from flask import current_app
-from app.models import Veiculo, whatsapp_numeros
-from whatsapp import enviar_mensagem_whatsapp
 from datetime import datetime
 import requests
-from app.models import whatsapp_numeros
+from app.models import Veiculo, whatsapp_numeros
+import requests
+import urllib.parse
+import os
+from whatsapp import enviar_mensagem_whatsapp
+from flask_login import current_user
+from app.models import registrar_log
+from dotenv import load_dotenv
+load_dotenv()
+
+
+# === Envia mensagem via CallMeBot ===
+
+def disparar_alertas_multiplos():
+    mensagem = gerar_resumo_veiculos()
+    if not mensagem:
+        print("✅ Nenhum veículo próximo da manutenção.")
+        return
+
+    destinatarios = {
+        "18981430410": "8852576",
+        "8494017097": "7685670",
+        "8491174367": "2805644",
+        "18981430214": "4358893"
+    }
+
+    print("📨 MENSAGEM GERADA:\n", mensagem)
+
+    for numero, chave in destinatarios.items():
+        sucesso = enviar_mensagem_whatsapp(numero, mensagem, chave)
+        status = "✔️ OK" if sucesso else "❌ FALHOU"
+        print(f"{status} para {numero}")
 
 
 
+def enviar_mensagem_whatsapp(numero, mensagem, apikey):
+    if not apikey:
+        print(f"❌ API Key não definida para {numero}!")
+        registrar_log(current_user, f"Envio de alerta para {numero} — Falha (API Key ausente)")
+        return False
+
+    numero_formatado = f'+55{numero.lstrip("+")}'
+    params = {
+        "phone": numero_formatado,
+        "text": mensagem,
+        "apikey": apikey
+    }
+
+    url = f"https://api.callmebot.com/whatsapp.php?{urllib.parse.urlencode(params)}"
+    print(f"🔗 URL gerada: {url}")
+
+    try:
+        resposta = requests.get(url, timeout=10)
+        print(f"📤 Enviado para {numero}: {resposta.status_code} - {resposta.text}")
+
+        sucesso = (
+            resposta.status_code == 200 and
+            ("message queued" in resposta.text.lower() or
+             "message successfully sent" in resposta.text.lower())
+        )
+
+        # 📋 Status resumido
+        if sucesso:
+            status = "✅ Sucesso"
+        elif "apikey is invalid" in resposta.text.lower():
+            status = "❌ API inválida"
+        elif "paused" in resposta.text.lower():
+            status = "⏸️ Conta pausada"
+        else:
+            status = "⚠️ Entrega incerta"
+
+        registrar_log(current_user, f"Envio de alerta para {numero_formatado} — {status}")
+        return sucesso
+
+    except Exception as e:
+        erro = str(e)
+        print(f"❌ Erro ao enviar para {numero}: {erro}")
+        registrar_log(current_user, f"Erro ao enviar alerta para {numero_formatado} — {erro}")
+        return False
+
+
+
+
+# === Monta uma mensagem detalhada com os veículos em alerta ===
 def gerar_resumo_veiculos():
     with current_app.app_context():
         veiculos = Veiculo.query.all()
         em_alerta = [
             v for v in veiculos if (
-                v.km_para_preventiva is not None and v.km_para_preventiva <= 5000 or
-                v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000
+                (v.km_para_preventiva is not None and v.km_para_preventiva <= 5000) or
+                (v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000)
             )
         ]
 
         if not em_alerta:
-            return None  # nada para enviar
+            return None  # nenhum veículo em alerta
 
-        mensagem = f"📅 ALERTA de Manutenção - {datetime.today().strftime('%d/%m/%Y')}\n\n"
+        mensagem = f"📅 *ALERTA de Manutenção* - {datetime.today().strftime('%d/%m/%Y')}\n\n"
         for v in em_alerta:
             mensagem += (
                 f"🚛 *{v.placa}* ({v.motorista})\n"
-                f"• KM Atual: {v.km_atual} km\n"
+                f"• KM Atual: {v.km_atual:,} km\n"
                 f"• Preventiva: {v.km_para_preventiva or 'N/D'} km\n"
                 f"• Intermediária: {v.km_para_intermediaria or 'N/D'} km\n\n"
             )
 
         return mensagem
 
-def disparar_alerta():
-    mensagem = gerar_resumo_veiculos()
-    if mensagem:
-        print("📨 MENSAGEM GERADA:\n", mensagem)
-        for numero in whatsapp_numeros:
-            sucesso = enviar_mensagem_whatsapp(numero, mensagem)
-            print(f'Enviado para {numero}: {"✔️" if sucesso else "❌"}')
-    else:
-        print("✅ Nenhum veículo precisa de manutenção no momento.")
 
-def enviar_alerta_manutencao(numero, placa, condutor, preventiva, intermediaria, km_atual):
-    token = "EAAKA1BO7HoQBO6VSlpcqpDvkAVKd3oNDxC8XHRHxcqBTszeNVB362YN4rpMybru9sfJiybpJbyRsVuNSTdIqZC4BhKKa1P1BY2342MCnvHuc9BURq3QF7zYcDb0BeH5Pqq83wTJheJZAEnFCFpLZBwBa8bU4fRCOdXlOjXyfqKvOdZC6RPEQEZAmhoVBMLMZCny7wE1FD5tmXsHXBQZCjw8CLADR65enJ0caPJYibOT7zUC9wZDZD"
-    phone_number_id = "700570819805323"
-
-    url = f"https://graph.facebook.com/v19.0/{phone_number_id}/messages"
-
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": numero,
-        "type": "template",
-        "template": {
-            "name": "alerta_manutencao",
-            "language": { "code": "pt_BR" },
-            "components": [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": placa},
-                        {"type": "text", "text": condutor},
-                        {"type": "text", "text": str(preventiva)},
-                        {"type": "text", "text": str(intermediaria)},
-                        {"type": "text", "text": str(km_atual)}
-                    ]
-                }
-            ]
-        }
-    }
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    print(f"Enviado para {numero}: {response.status_code}")
-    print(response.text)
-
-    return response.status_code == 200
-
-
+# === Envia mensagem para todos os números cadastrados ===
 def disparar_alertas_reais():
-    with current_app.app_context():
-        veiculos = Veiculo.query.all()
-        em_alerta = [
-            v for v in veiculos if (
-                v.km_para_preventiva is not None and v.km_para_preventiva <= 5000 or
-                v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000
-            )
-        ]
-        
-        for v in em_alerta:
-            for numero in whatsapp_numeros:
-                print(f"📋 {v.placa} → motorista={v.motorista}, prev={v.km_para_preventiva}, inter={v.km_para_intermediaria}, atual={v.km_atual}")
-                
-                sucesso = enviar_alerta_manutencao(
-                    numero,
-                    v.placa,
-                    v.motorista or "DESCONHECIDO",
-                    v.km_para_preventiva or "N/D",
-                    v.km_para_intermediaria or "N/D",
-                    v.km_atual or 0
-                )
+    mensagem = gerar_resumo_veiculos()
+    if not mensagem:
+        print("✅ Nenhum veículo com manutenção próxima.")
+        return
 
-                print(f"✅ Envio para {v.placa}: {'OK' if sucesso else 'FALHOU'}")
+    print("📨 MENSAGEM GERADA:\n", mensagem)
+
+    for numero in whatsapp_numeros:
+        sucesso = enviar_mensagem_whatsapp(numero, mensagem)
+        print(f"✔️ Enviado para {numero}: {'OK' if sucesso else 'FALHOU'}")
 
 
+# === Extra: gera dados como dicionário, útil para exibir na interface ===
 def extrair_dados():
-    from flask import current_app
     with current_app.app_context():
         veiculos = Veiculo.query.all()
         em_alerta = [
             v for v in veiculos if (
-                v.km_para_preventiva is not None and v.km_para_preventiva <= 5000 or
-                v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000
+                (v.km_para_preventiva is not None and v.km_para_preventiva <= 5000) or
+                (v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000)
             )
         ]
+
         linhas = []
         for v in em_alerta:
             linhas.append({
@@ -127,4 +145,3 @@ def extrair_dados():
                 "intermediaria": f"{v.km_para_intermediaria or 'N/D'} km"
             })
         return linhas
-

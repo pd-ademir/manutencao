@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from collections import defaultdict
 from .forms import VehicleForm, ManutencaoForm
 from .models import db, Veiculo, Manutencao
-from alertas import enviar_alerta_manutencao, gerar_resumo_veiculos, extrair_dados
+from alertas import gerar_resumo_veiculos, extrair_dados, disparar_alertas_reais
 from datetime import datetime, date
 from xhtml2pdf import pisa
 from io import BytesIO
@@ -12,6 +12,7 @@ from functools import wraps
 from flask import abort
 from app.models import LogSistema
 from app.models import registrar_log
+from flask import session
 
 main = Blueprint('main', __name__)
 
@@ -271,12 +272,26 @@ def nova_manutencao():
     return render_template('new_entry.html')
 
 
+#@main.route('/teste-alerta')
+#def teste_alerta():
+ #   from alertas import disparar_alertas_reais
+  #  disparar_alertas_reais()
+  #  flash("🚨 Alerta via template disparado com sucesso!", "success")
+  #  return redirect(url_for('main.index'))
+
 @main.route('/teste-alerta')
+@login_required
 def teste_alerta():
-    from alertas import disparar_alertas_reais
-    disparar_alertas_reais()
-    flash("🚨 Alerta via template disparado com sucesso!", "success")
+    if current_user.tipo.upper() != 'MASTER':
+        flash("❌ Apenas usuários MASTER podem disparar alertas!", "danger")
+        return redirect(url_for('main.index'))
+
+    from alertas import disparar_alertas_multiplos
+    disparar_alertas_multiplos()
+    flash("🚨 Alertas enviados com sucesso!", "success")
     return redirect(url_for('main.index'))
+
+
 
 @main.route('/gerar-relatorio-pdf')
 @login_required
@@ -376,6 +391,7 @@ def login():
         usuario = Usuario.query.filter_by(usuario=nome_usuario).first()
         if usuario and usuario.verificar_senha(senha):
             login_user(usuario)
+            session.permanent = True  # ⏱️ ativa limite de tempo de sessão
             registrar_log(usuario, f"Fez login no sistema")
             flash('Login realizado com sucesso!', 'success')
             return redirect(url_for('main.index'))
