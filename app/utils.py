@@ -5,3 +5,5 @@ def format_km(value):
         return f"{int(value):,}".replace(",", ".") + " km"
     except (ValueError, TypeError):
         return str(value)
+    
+

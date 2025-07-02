@@ -13,6 +13,8 @@ from flask import abort
 from app.models import LogSistema
 from app.models import registrar_log
 from flask import session
+from app.permissoes import tem_permissao
+
 
 main = Blueprint('main', __name__)
 
@@ -68,15 +70,17 @@ def atualizar_km(id):
 
 @main.route('/cadastro-veiculo', methods=['GET', 'POST'])
 @login_required
-@requer_tipo("master")
+@requer_tipo("master", "comum", "teste", "visualizador")  # permite acesso à página para leitura
 def cadastro_veiculo():
     veiculo_id = request.args.get('id')
     form = VehicleForm()
 
-    # Edição: carregando veículo
+    # Edição: carregando veículo existente
     if veiculo_id:
         veiculo = Veiculo.query.get_or_404(veiculo_id)
+
         if request.method == 'GET':
+            # Preenche os campos do formulário para exibição
             form.placa.data = veiculo.placa
             form.modelo.data = veiculo.modelo
             form.fabricante.data = veiculo.fabricante
@@ -97,7 +101,11 @@ def cadastro_veiculo():
             form.data_calibragem.data = veiculo.data_calibragem
 
         elif form.validate_on_submit():
-            # Atualizar os dados existentes
+            if not tem_permissao(current_user.tipo, "alterar_dados"):
+                flash("Você não tem permissão para alterar veículos.", "danger")
+                return redirect(url_for('main.cadastro_veiculo', id=veiculo.id))
+
+            # Atualiza os dados do veículo
             veiculo.placa = form.placa.data.upper()
             veiculo.modelo = form.modelo.data.upper()
             veiculo.fabricante = form.fabricante.data.upper()
@@ -120,11 +128,15 @@ def cadastro_veiculo():
             db.session.commit()
             registrar_log(current_user, f"Atualizou o veículo {veiculo.placa}")
             flash(f'Veículo {veiculo.placa} atualizado com sucesso!', 'success')
-            return redirect(url_for('main.cadastro_veiculo'))
+            return redirect(url_for('main.cadastro_veiculo', id=veiculo.id))
 
     else:
         # Cadastro novo
         if form.validate_on_submit():
+            if not tem_permissao(current_user.tipo, "alterar_dados"):
+                flash("Você não tem permissão para cadastrar novos veículos.", "danger")
+                return redirect(url_for('main.cadastro_veiculo'))
+
             placa_formatada = form.placa.data.upper()
             existente = Veiculo.query.filter_by(placa=placa_formatada).first()
             if existente:
@@ -154,9 +166,9 @@ def cadastro_veiculo():
 
             db.session.add(veiculo)
             db.session.commit()
-            registrar_log(current_user, f"Atualizou o veículo {veiculo.placa}")
+            registrar_log(current_user, f"Cadastrou o veículo {veiculo.placa}")
             flash(f'Veículo {veiculo.placa} cadastrado com sucesso!', 'success')
-            return redirect(url_for('main.cadastro_veiculo'))
+            return redirect(url_for('main.cadastro_veiculo', id=veiculo.id))
 
     return render_template('vehicle_register.html', form=form)
 
@@ -186,17 +198,22 @@ def editar_veiculo(id):
 
 @main.route('/realizar-manutencao', methods=['GET', 'POST'])
 @login_required
-@requer_tipo("master", "comum")
+@requer_tipo("master", "comum", "teste", "visualizador")
 def realizar_manutencao():
     form = ManutencaoForm()
     form.veiculo_id.choices = [(v.id, v.placa) for v in Veiculo.query.order_by(Veiculo.placa).all()]
 
     if form.validate_on_submit():
+        # ❌ Impede submissão se o usuário não tiver permissão
+        if not tem_permissao(current_user.tipo, "alterar_dados"):
+            flash("Você não tem permissão para registrar manutenções.", "warning")
+            return redirect(url_for('main.realizar_manutencao'))
+
         veiculo = Veiculo.query.get(form.veiculo_id.data)
         tipo = form.tipo.data.upper()
         km_realizado = form.km_realizado.data
 
-        # Cria o registro da manutenção
+        # Criação da manutenção
         manut = Manutencao(
             veiculo_id=veiculo.id,
             motorista=veiculo.motorista,
@@ -204,7 +221,7 @@ def realizar_manutencao():
             modelo=veiculo.modelo,
             fabricante=veiculo.fabricante,
             km_atual=km_realizado,
-            km_troca=km_realizado,  # pode personalizar se quiser
+            km_troca=km_realizado,
             data_troca=form.data.data,
             data_proxima=None,
             observacoes=form.observacoes.data.upper() if form.observacoes.data else None
@@ -214,7 +231,7 @@ def realizar_manutencao():
         # Atualiza o campo correto do veículo
         if tipo == 'PREVENTIVA':
             veiculo.km_ultima_revisao_preventiva = km_realizado
-            veiculo.km_ultima_revisao_intermediaria = km_realizado  # também troca filtro
+            veiculo.km_ultima_revisao_intermediaria = km_realizado
         elif tipo == 'INTERMEDIARIA':
             veiculo.km_ultima_revisao_intermediaria = km_realizado
         elif tipo == 'DIFERENCIAL':
@@ -232,7 +249,7 @@ def realizar_manutencao():
 
 @main.route('/excluir-veiculo/<int:id>')
 @login_required
-@requer_tipo("master")
+@requer_tipo("master","teste")
 def excluir_veiculo(id):
     veiculo = Veiculo.query.get_or_404(id)
     Manutencao.query.filter_by(veiculo_id=veiculo.id).delete()  # Apaga manutenções primeiro
@@ -246,7 +263,7 @@ def excluir_veiculo(id):
 
 @main.route('/placas')
 @login_required
-@requer_tipo("master", "comum")
+@requer_tipo("master", "comum","teste")
 def lista_placas():
     veiculos = Veiculo.query.order_by(Veiculo.unidade, Veiculo.placa).all()
     unidades = defaultdict(list)
