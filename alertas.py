@@ -9,6 +9,7 @@ from whatsapp import enviar_mensagem_whatsapp
 from flask_login import current_user
 from app.models import registrar_log
 from dotenv import load_dotenv
+from datetime import date
 load_dotenv()
 
 
@@ -88,6 +89,7 @@ def enviar_mensagem_whatsapp(numero, mensagem, apikey):
 def gerar_resumo_veiculos():
     with current_app.app_context():
         veiculos = Veiculo.query.all()
+
         em_alerta = [
             v for v in veiculos if (
                 (v.km_para_preventiva is not None and v.km_para_preventiva <= 5000) or
@@ -96,19 +98,21 @@ def gerar_resumo_veiculos():
         ]
 
         if not em_alerta:
-            return None  # nenhum veículo em alerta
+            return None  # Nenhum veículo relevante
 
-        mensagem = f"📅 *ALERTA de Manutenção* - {datetime.today().strftime('%d/%m/%Y')}\n\n"
+        linhas = [f"📅 ALERTA de Manutenção - {date.today().strftime('%d/%m/%Y')}"]
+
         for v in em_alerta:
-            mensagem += (
-                f"🚛 *{v.placa}* ({v.motorista})\n"
-                f"• KM Atual: {v.km_atual:,} km\n"
-                f"• Preventiva: {v.km_para_preventiva or 'N/D'} km\n"
-                f"• Intermediária: {v.km_para_intermediaria or 'N/D'} km\n\n"
-            )
+            linhas.append(f"\n🚛 {v.placa}")
+            linhas.append(f"• KM Atual: {v.km_atual:,.0f} km".replace(",", "."))
 
-        return mensagem
+            if v.km_para_preventiva is not None and v.km_para_preventiva <= 5000:
+                linhas.append(f"• Preventiva: {v.km_para_preventiva:,.0f} km".replace(",", "."))
 
+            if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000:
+                linhas.append(f"• Intermediária: {v.km_para_intermediaria:,.0f} km".replace(",", "."))
+
+        return "\n".join(linhas)
 
 # === Envia mensagem para todos os números cadastrados ===
 def disparar_alertas_reais():
