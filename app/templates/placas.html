@@ -50,7 +50,12 @@
     ) %}
     <tr class="{{ 'alerta' if vencido else '' }}">
       <td>{{ v.motorista }}</td>
-      <td>{{ v.placa }}</td>
+      <td>
+        <a href="{{ url_for('checklist.por_placa', placa=v.placa) }}"
+          class="text-decoration-none link-primary">
+          {{ v.placa }}
+        </a>
+      </td>
       <td>{{ v.placa_1 or '-' }}</td>
       <td>{{ v.placa_2 or '-' }}</td>
       <td>{{ v.modelo }}</td>

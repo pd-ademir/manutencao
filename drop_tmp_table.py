@@ -1,8 +1,13 @@
-from app import create_app, db
+from sqlalchemy import create_engine, text
 
-app = create_app()
+# Certifique-se de que esse caminho é o correto
+engine = create_engine("sqlite:///instance/checklist.sqlite3")
 
-with app.app_context():
-    with db.engine.connect() as conn:
-        conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_manutencao"))
-        print("✅ Tabela temporária _alembic_tmp_manutencao removida com sucesso!")
+with engine.connect() as conn:
+    try:
+        conn.execute(text("DELETE FROM checklist"))
+        conn.commit()
+        print("🧹 Todos os dados da tabela checklist foram apagados com sucesso.")
+    except Exception as e:
+        print("⚠️ Erro ao apagar os dados:")
+        print(e)

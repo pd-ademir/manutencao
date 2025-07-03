@@ -5,6 +5,9 @@ from flask_login import LoginManager
 from .models import Usuario
 from .extensions import db, migrate, login_manager
 from .utils import format_km
+from app.checklist import checklist_bp
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -34,5 +37,8 @@ def create_app():
     # Registrando blueprints
     from .routes import main
     app.register_blueprint(main)
+    app.register_blueprint(checklist_bp, url_prefix='/checklist')
 
     return app
+
+

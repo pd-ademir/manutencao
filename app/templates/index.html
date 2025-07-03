@@ -35,7 +35,11 @@
     <tbody>
       {% for veiculo in veiculos %}
         <tr>
-          <td>{{ veiculo.placa }}</td>
+          <td>
+            <a href="{{ url_for('checklist.por_placa', placa=veiculo.placa) }}" class="link-primary text-decoration-none">
+              {{ veiculo.placa }}
+            </a>
+          </td>
           <td>{{ veiculo.placa_1 or '-' }}</td>
           <td>{{ veiculo.placa_2 or '-' }}</td>
           <td>{{ veiculo.motorista }}</td>
