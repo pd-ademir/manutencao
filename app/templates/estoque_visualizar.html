@@ -107,26 +107,20 @@
             <th style="width: 200px;">Observações</th>
           </tr>
         </thead>
-        <tbody>
-          {% for i in range(15) %}
-          <tr>
-            <td>{{ i + 1 }}</td>
-            <td>{{ pneus[i].numero_fogo if i < pneus|length else '' }}</td>
-            <td>{{ pneus[i].vida if i < pneus|length else '' }}</td>
-            <td>{{ pneus[i].modelo if i < pneus|length else '' }}</td>
-            <td>{{ pneus[i].desenho if i < pneus|length else '' }}</td>
-            <td>{{ pneus[i].dot if i < pneus|length else '' }}</td>
-            <td>
-              {% if i < pneus|length %}
-                {{ pneus[i].data_entrada.strftime('%d/%m/%Y') }}
-              {% else %}
-                &nbsp;
-              {% endif %}
-            </td>
-            <td>{{ pneus[i].observacoes if i < pneus|length else '' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
+      <tbody>
+        {% for pneu in pneus %}
+        <tr>
+          <td>{{ loop.index }}</td> <!-- substitui o 'i' do enumerate -->
+          <td>{{ pneu.numero_fogo }}</td>
+          <td>{{ pneu.vida }}</td>
+          <td>{{ pneu.modelo }}</td>
+          <td>{{ pneu.desenho }}</td>
+          <td>{{ pneu.dot }}</td>
+          <td>{{ pneu.data_entrada.strftime('%d/%m/%Y') }}</td>
+          <td>{{ pneu.observacoes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
       </table>
     </div>
   </div>
