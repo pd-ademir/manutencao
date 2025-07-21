@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import request
+from zoneinfo import ZoneInfo
+from flask_sqlalchemy import SQLAlchemy
+
 
 
 class Manutencao(db.Model):
@@ -31,23 +34,18 @@ class Veiculo(db.Model):
     ano = db.Column(db.String(4))
     unidade = db.Column(db.String(50), nullable=False)
     motorista = db.Column(db.String(100), nullable=False)
-
-    # Placas adicionais
+    
     placa_1 = db.Column(db.String(10))
     placa_2 = db.Column(db.String(10))
-
-    # Calibragem
+    
     data_calibragem = db.Column(db.Date)
-
-    # Troca de óleo — diferencial
-    troca_oleo_diferencial = db.Column(db.Integer)            # KM da última troca
-    intervalo_oleo_diferencial = db.Column(db.Integer)        # Intervalo configurado até a próxima
-
-    # Troca de óleo — câmbio
+    
+    troca_oleo_diferencial = db.Column(db.Integer)
+    intervalo_oleo_diferencial = db.Column(db.Integer)
+    
     troca_oleo_cambio = db.Column(db.Integer)
     intervalo_oleo_cambio = db.Column(db.Integer)
-
-    # Revisões
+    
     km_ultima_revisao_preventiva = db.Column(db.Integer)
     km_ultima_revisao_intermediaria = db.Column(db.Integer)
     km_troca_preventiva = db.Column(db.Integer, nullable=False)
@@ -56,7 +54,8 @@ class Veiculo(db.Model):
     km_atual = db.Column(db.Integer, default=0)
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relacionamento com manutenções realizadas
+    em_manutencao = db.Column(db.Boolean, default=False)  # ✅ NOVO CAMPO AQUI
+
     manutencoes = db.relationship('Manutencao', backref='veiculo', lazy=True)
 
     # --- Propriedades calculadas ---
@@ -93,7 +92,7 @@ class Veiculo(db.Model):
 
     def __repr__(self):
         return f'<Veiculo {self.placa}>'
-    
+
 
 
 class Usuario(db.Model, UserMixin):
@@ -109,7 +108,7 @@ class Usuario(db.Model, UserMixin):
     def verificar_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
-from datetime import datetime
+
 
 class LogSistema(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -120,21 +119,73 @@ class LogSistema(db.Model):
     usuario = db.relationship('Usuario', backref='logs')
 
 
-def registrar_log(usuario, acao):
-    from app.extensions import db
-    from app.models import LogSistema
 
-    ip = request.remote_addr or "IP desconhecido"
-    log = LogSistema(usuario_id=usuario.id, acao=acao, ip=ip)
+def get_ip_real():
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    return request.remote_addr or "IP desconhecido"
+
+
+def registrar_log(usuario, acao):
+    print("Registrando log:", acao)
+    ip = get_ip_real()
+    data = datetime.now(ZoneInfo("America/Fortaleza"))
+
+    log = LogSistema(
+        usuario_id=usuario.id,
+        acao=acao,
+        ip=ip,
+        data=data
+    )
     db.session.add(log)
     db.session.commit()
 
 
 
-    
+
+
 # Apenas para testes iniciais — depois montamos o CRUD certo
 whatsapp_numeros = [
       # <- insira aqui seu número de teste
     '18981430410'
 ]
+
+
+from app.extensions import db
+
+class PneuAplicado(db.Model):
+    __bind_key__ = 'pneus'
+    __tablename__ = 'pneus_aplicados'
+
+    id = db.Column(db.Integer, primary_key=True)
+    placa = db.Column(db.String(10), nullable=False)
+    referencia = db.Column(db.String(50), nullable=False)
+    dot = db.Column(db.String(10), nullable=False)
+    numero_fogo = db.Column(db.String(20), nullable=False)
+    quantidade = db.Column(db.Integer, nullable=False)
+    data_aplicacao = db.Column(db.Date, nullable=False)
+    unidade = db.Column(db.String(30), nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    extra = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f'<PneuAplicado {self.placa} - {self.referencia}>'
+
+class EstoquePneu(db.Model):
+    __bind_key__ = 'pneus'
+    __tablename__ = 'estoque_pneus'
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero_fogo = db.Column(db.String(20), unique=True, nullable=False)
+    vida = db.Column(db.Integer, nullable=False)
+    modelo = db.Column(db.String(50), nullable=False)
+    desenho = db.Column(db.String(20), nullable=False)
+    dot = db.Column(db.String(10), nullable=True)
+    data_entrada = db.Column(db.Date, nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='DISPONIVEL')  # ou 'APLICADO'
+
+
+    def __repr__(self):
+        return f"<EstoquePneu {self.numero_fogo}>"
 

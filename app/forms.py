@@ -53,3 +53,50 @@ class ManutencaoForm(FlaskForm):
     km_realizado = IntegerField('KM Atual', validators=[DataRequired()])
     observacoes = TextAreaField('Observações')
     submit = SubmitField('Registrar')
+
+
+class PneuAplicadoForm(FlaskForm):
+    placa = StringField('Placa', validators=[DataRequired()])
+    referencia = StringField('Referência', validators=[DataRequired()])
+    dot = StringField('DOT', validators=[DataRequired()])
+    numero_fogo = StringField('Número de Fogo', validators=[DataRequired()])
+    quantidade = IntegerField('Quantidade', validators=[DataRequired()])
+    data_aplicacao = DateField('Data de Aplicação', format='%Y-%m-%d', validators=[DataRequired()])
+    unidade = SelectField('Unidade', choices=[
+        ('SMART', 'SMART'),
+        ('SPOT PE', 'SPOT PE'),
+        ('SPOT RN', 'SPOT RN'),
+        ('BAGAM', 'BAGAM'),
+        ('BACRO', 'BACRO')
+    ], validators=[DataRequired()])
+    observacoes = TextAreaField('Observações')
+    extra = TextAreaField('Extra')
+
+
+class EstoquePneuForm(FlaskForm):
+    numero_fogo = StringField('Número de Fogo', validators=[
+        DataRequired(), Length(max=20)
+    ])
+    
+    vida = IntegerField('Vida', validators=[
+        DataRequired()
+    ])
+    
+    modelo = StringField('Modelo', validators=[
+        DataRequired(), Length(max=50)
+    ])
+    
+    desenho = SelectField('Desenho', choices=[
+        ('LISO', 'LISO'),
+        ('BORRACHUDO', 'BORRACHUDO')
+    ], validators=[DataRequired()])
+    
+    dot = StringField('DOT', validators=[
+        Length(max=10)
+    ])
+    
+    data_entrada = DateField('Data de Entrada', format='%Y-%m-%d', validators=[
+        DataRequired()
+    ])
+    
+    observacoes = TextAreaField('Observações')

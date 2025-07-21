@@ -63,15 +63,17 @@
       <td>{{ v.ano }}</td>
 
       <td>
-        {% if tem_permissao(current_user.tipo, 'editar_km') %}
-        <form action="{{ url_for('main.atualizar_km', id=v.id) }}" method="POST" style="display: flex; gap: 6px;">
-          <input type="number" name="km_atual" value="{{ v.km_atual }}" class="form-control" style="max-width: 170px;" required>
-          <button type="submit" title="Atualizar KM" style="background: #28a745; border: none; color: white; padding: 3px 8px; border-radius: 4px;">✔️</button>
-        </form>
-        {% else %}
-          <span class="text-muted">{{ v.km_atual | format_km }}</span>
-        {% endif %}
-      </td>
+          {% if tem_permissao(current_user.tipo, 'editar_km') %}
+          <form action="{{ url_for('main.atualizar_km', id=v.id) }}" method="POST" style="display: flex; gap: 6px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">  {# 👈 token CSRF correto #}
+            <input type="number" name="km_atual" value="{{ v.km_atual }}" class="form-control" style="max-width: 170px;" required>
+            <button type="submit" title="Atualizar KM" style="background: #28a745; border: none; color: white; padding: 3px 8px; border-radius: 4px;">✔️</button>
+          </form>
+          {% else %}
+            <span class="text-muted">{{ v.km_atual | format_km }}</span>
+          {% endif %}
+        </td>
+
 
       <td>
         {% if v.km_para_preventiva is not none %}
@@ -126,7 +128,9 @@
       <td>
         {% if tem_permissao(current_user.tipo, 'alterar_dados') %}
           <a href="{{ url_for('main.cadastro_veiculo', id=v.id) }}" class="btn-azul" title="Editar">✏️</a>
+          {% if current_user.tipo == 'master' %}
           <a href="{{ url_for('main.excluir_veiculo', id=v.id) }}" class="btn-vermelho" title="Excluir" onclick="return confirm('Deseja excluir {{ v.placa }}?')">🗑️</a>
+          {% endif %}
         {% else %}
           <span class="text-muted">Somente leitura</span>
         {% endif %}

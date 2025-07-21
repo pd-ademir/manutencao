@@ -11,9 +11,20 @@ from .models import Usuario
 from functools import wraps
 from flask import abort
 from app.models import LogSistema
-from app.models import registrar_log
+from app.models import registrar_log, get_ip_real
 from flask import session
 from app.permissoes import tem_permissao
+from zoneinfo import ZoneInfo
+from app.utils import detectar_alteracoes
+from flask_wtf import CSRFProtect
+from flask import jsonify
+from app.forms import PneuAplicadoForm
+from app.models import PneuAplicado
+from flask import send_file
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from app.forms import EstoquePneuForm
+from app.models import EstoquePneu
 
 
 main = Blueprint('main', __name__)
@@ -172,26 +183,37 @@ def cadastro_veiculo():
 
     return render_template('vehicle_register.html', form=form)
 
-@main.route('/editar-veiculo/<int:id>', methods=['GET','POST'])
+@main.route('/editar-veiculo/<int:id>', methods=['GET', 'POST'])
 @login_required
 @requer_tipo("master")
 def editar_veiculo(id):
     veiculo = Veiculo.query.get_or_404(id)
 
-    veiculo.placa = request.form.get('placa', '').upper()
-    veiculo.carreta1 = request.form.get('carreta1', '').upper()
-    veiculo.carreta2 = request.form.get('carreta2', '').upper()
-    veiculo.motorista = request.form.get('motorista', '').upper()
-    veiculo.modelo = request.form.get('modelo', '').upper()
-    veiculo.fabricante = request.form.get('fabricante', '').upper()
-    veiculo.ano = request.form.get('ano', '').upper()
+    novos_dados = {
+        "placa": request.form.get('placa', '').upper(),
+        "carreta1": request.form.get('carreta1', '').upper(),
+        "carreta2": request.form.get('carreta2', '').upper(),
+        "motorista": request.form.get('motorista', '').upper(),
+        "modelo": request.form.get('modelo', '').upper(),
+        "fabricante": request.form.get('fabricante', '').upper(),
+        "ano": request.form.get('ano', '').upper(),
+        "km_atual": int(request.form.get('km_atual')) if request.form.get('km_atual', '').isdigit() else 0
+    }
 
-    km_atual = request.form.get('km_atual')
-    veiculo.km_atual = int(km_atual) if km_atual and km_atual.isdigit() else 0
+    alteracoes = detectar_alteracoes(veiculo, novos_dados)
+    print("Alterações detectadas:", alteracoes)
 
-    db.session.commit()
-    registrar_log(current_user, f"Editou manualmente os dados do veículo {veiculo.placa}")
-    flash(f'Dados do veículo {veiculo.placa} atualizados no painel!', 'success')
+
+    if alteracoes:
+        for campo, valor in novos_dados.items():
+            setattr(veiculo, campo, valor)
+
+        db.session.commit()
+        registrar_log(current_user, f"Editou veículo {veiculo.placa}: " + "; ".join(alteracoes))
+        flash(f'Dados do veículo {veiculo.placa} atualizados no painel!', 'success')
+    else:
+        flash(f'Nenhuma alteração detectada no veículo {veiculo.placa}.', 'info')
+
     return redirect(url_for('main.lista_placas'))
 
 
@@ -472,11 +494,267 @@ def remover_usuario(id):
     return redirect(url_for('main.gerenciar_usuarios'))
 
 
-@main.route('/logs')
+from zoneinfo import ZoneInfo
+
+@main.route("/logs")
 @login_required
-@requer_tipo('master')
 def exibir_logs():
-    logs = LogSistema.query.order_by(LogSistema.data.desc()).limit(100).all()
-    return render_template('logs.html', logs=logs)
+    logs = LogSistema.query.limit(200).all()
+
+    for log in logs:
+        if log.data.tzinfo is None:
+            log.data = log.data.replace(tzinfo=ZoneInfo("UTC"))
+        log.data = log.data.astimezone(ZoneInfo("America/Fortaleza"))
+
+    # 🔥 Ordena no Python após aplicar timezone
+    logs.sort(key=lambda l: l.data, reverse=True)
+
+    return render_template("logs.html", logs=logs)
+
+@main.route('/manutencao/<placa>', methods=['POST'])
+@login_required
+def atualizar_manutencao(placa):
+    if current_user.tipo.upper() != 'MASTER':
+        abort(403)
+
+    veiculo = Veiculo.query.filter_by(placa=placa).first_or_404()
+    veiculo.em_manutencao = not veiculo.em_manutencao
+    db.session.commit()
+    return jsonify({'status': 'ok', 'ativo': veiculo.em_manutencao})
 
 
+@main.route('/pneus', methods=['GET', 'POST'])
+@login_required
+def mostrar_pneus():
+    form = PneuAplicadoForm()
+
+    if form.validate_on_submit():
+        numero_fogo = form.numero_fogo.data.upper()
+        pneu_estoque = EstoquePneu.query.filter_by(numero_fogo=numero_fogo, status='DISPONIVEL').first()
+        if not pneu_estoque:
+            registrar_log(current_user, f"Tentativa de aplicar pneu indisponível: {numero_fogo}")
+            flash('❌ Este pneu não está disponível no estoque!', 'danger')
+            return render_template('pneus.html', form=form, pneus=[])
+
+        pneu = PneuAplicado(
+            placa=form.placa.data.upper(),
+            referencia=form.referencia.data.upper(),
+            dot=form.dot.data.upper(),
+            numero_fogo=numero_fogo,
+            quantidade=form.quantidade.data,
+            data_aplicacao=form.data_aplicacao.data,
+            unidade=form.unidade.data,
+            observacoes=form.observacoes.data,
+            extra=form.extra.data
+        )
+        db.session.add(pneu)
+        pneu_estoque.status = 'APLICADO'
+        db.session.commit()
+
+        registrar_log(current_user, f"Pneu aplicado: {numero_fogo} na placa {form.placa.data.upper()}")
+        flash('✅ Pneu aplicado com sucesso!', 'success')
+        return redirect('/pneus')
+
+    placa = request.args.get('placa', '').upper()
+    fogo = request.args.get('numero_fogo', '').upper()
+    unidade = request.args.get('unidade', '')
+    query = PneuAplicado.query
+    if placa:
+        query = query.filter(PneuAplicado.placa.ilike(f"%{placa}%"))
+    if fogo:
+        query = query.filter(PneuAplicado.numero_fogo.ilike(f"%{fogo}%"))
+    if unidade:
+        query = query.filter(PneuAplicado.unidade == unidade)
+
+    pneus = query.order_by(PneuAplicado.id.desc()).limit(15).all()
+    return render_template('pneus.html', form=form, pneus=pneus)
+
+
+@main.route('/pneus/editar_placa', methods=['POST'])
+@login_required
+def editar_placa():
+    id = request.form.get('id')
+    nova_placa = request.form.get('placa', '').upper()
+    nova_unidade = request.form.get('unidade', '').upper()
+
+    pneu = PneuAplicado.query.get(id)
+    if pneu:
+        pneu.placa = nova_placa
+        pneu.unidade = nova_unidade
+        db.session.commit()
+        registrar_log(current_user, f"Edição de placa do pneu ID {id}: nova placa {nova_placa}, unidade {nova_unidade}")
+        flash(f'✅ Dados atualizados com sucesso!', 'success')
+    else:
+        registrar_log(current_user, f"Tentativa de editar placa: pneu ID {id} não encontrado")
+        flash('❌ Pneu não encontrado', 'danger')
+
+    return redirect('/pneus')
+
+
+@main.route('/pneus/pdf', methods=['GET'])
+@login_required
+def gerar_pdf():
+    placa = request.args.get('placa', '').upper()
+    fogo = request.args.get('numero_fogo', '').upper()
+    unidade = request.args.get('unidade', '')
+
+    query = PneuAplicado.query
+    if placa:
+        query = query.filter(PneuAplicado.placa.ilike(f"%{placa}%"))
+    if fogo:
+        query = query.filter(PneuAplicado.numero_fogo.ilike(f"%{fogo}%"))
+    if unidade:
+        query = query.filter(PneuAplicado.unidade == unidade)
+
+    pneus = query.order_by(PneuAplicado.id.desc()).all()
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(50, height - 50, "Relatório de Pneus Aplicados")
+
+    pdf.setFont("Helvetica", 10)
+    y = height - 80
+    for i, p in enumerate(pneus, start=1):
+        linha = f"{i}. Placa: {p.placa} | Ref: {p.referencia} | DOT: {p.dot} | Fogo: {p.numero_fogo} | Qtd: {p.quantidade} | Data: {p.data_aplicacao.strftime('%d/%m/%Y')} | Unidade: {p.unidade}"
+        pdf.drawString(50, y, linha)
+        y -= 15
+        if y < 50:
+            pdf.showPage()
+            y = height - 50
+
+    pdf.save()
+    buffer.seek(0)
+    registrar_log(current_user, f"PDF de pneus aplicado gerado: placa={placa}, fogo={fogo}, unidade={unidade}")
+    return send_file(buffer, as_attachment=True, download_name="pneus_aplicados.pdf", mimetype='application/pdf')
+
+@main.route('/estoque', methods=['GET', 'POST'])
+@login_required
+def cadastrar_estoque():
+    form = EstoquePneuForm()
+
+    if form.validate_on_submit():
+        existente = EstoquePneu.query.filter_by(numero_fogo=form.numero_fogo.data.upper()).first()
+        if existente:
+            registrar_log(current_user, f"Tentativa duplicada de cadastro: {form.numero_fogo.data.upper()}")
+            flash('❌ Este número de fogo já está cadastrado no estoque.', 'danger')
+            return redirect('/estoque')
+
+        pneu = EstoquePneu(
+            numero_fogo=form.numero_fogo.data.upper(),
+            vida=form.vida.data,
+            modelo=form.modelo.data.upper(),
+            desenho=form.desenho.data.upper(),
+            dot=form.dot.data.upper(),
+            data_entrada=form.data_entrada.data,
+            observacoes=form.observacoes.data
+        )
+        db.session.add(pneu)
+        db.session.commit()
+        registrar_log(current_user, f"Cadastro de pneu no estoque: {form.numero_fogo.data.upper()}")
+        flash('✅ Pneu cadastrado no estoque com sucesso!', 'success')
+        return redirect('/estoque')
+
+    return render_template('estoque_pneus.html', form=form)
+
+
+@main.route('/estoque/visualizar', methods=['GET'])
+@login_required
+def visualizar_estoque():
+    numero_fogo = request.args.get('numero_fogo', '').upper()
+    modelo = request.args.get('modelo', '').upper()
+    desenho = request.args.get('desenho', '').upper()
+
+    query = EstoquePneu.query.filter_by(status='DISPONIVEL')
+    if numero_fogo:
+        query = query.filter(EstoquePneu.numero_fogo.ilike(f"%{numero_fogo}%"))
+    if modelo:
+        query = query.filter(EstoquePneu.modelo.ilike(f"%{modelo}%"))
+    if desenho:
+        query = query.filter(EstoquePneu.desenho == desenho)
+
+    pneus = query.order_by(EstoquePneu.id.desc()).all()
+    total_estoque = EstoquePneu.query.filter_by(status='DISPONIVEL').count()
+    total_aplicados = PneuAplicado.query.count()
+    liso = EstoquePneu.query.filter_by(desenho='LISO', status='DISPONIVEL').count()
+    borrachudo = EstoquePneu.query.filter_by(desenho='BORRACHUDO', status='DISPONIVEL').count()
+
+    registrar_log(current_user, f"Visualização do estoque: fogo={numero_fogo}, modelo={modelo}, desenho={desenho}")
+    return render_template('estoque_visualizar.html', pneus=pneus,
+                           total_estoque=total_estoque,
+                           total_aplicados=total_aplicados,
+                           liso=liso, borrachudo=borrachudo)
+
+
+
+@main.route('/estoque/pdf', methods=['GET'])
+@login_required
+def gerar_pdf_estoque():
+    numero_fogo = request.args.get('numero_fogo', '').upper()
+    modelo = request.args.get('modelo', '').upper()
+    desenho = request.args.get('desenho', '').upper()
+
+    query = EstoquePneu.query
+    if numero_fogo:
+        query = query.filter(EstoquePneu.numero_fogo.ilike(f"%{numero_fogo}%"))
+    if modelo:
+        query = query.filter(EstoquePneu.modelo.ilike(f"%{modelo}%"))
+    if desenho:
+        query = query.filter(EstoquePneu.desenho == desenho)
+
+    pneus = query.order_by(EstoquePneu.id.desc()).all()
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(50, height - 50, "📦 Relatório de Estoque de Pneus")
+
+    pdf.setFont("Helvetica", 10)
+    y = height - 80
+    for i, p in enumerate(pneus, start=1):
+        linha = f"{i}. Fogo: {p.numero_fogo} | Vida: {p.vida} | Modelo: {p.modelo} | Desenho: {p.desenho} | DOT: {p.dot} | Entrada: {p.data_entrada.strftime('%d/%m/%Y')}"
+        pdf.drawString(50, y, linha)
+        y -= 15
+        if y < 50:
+            pdf.showPage()
+            y = height - 50
+
+    pdf.save()
+    buffer.seek(0)
+
+    # 📝 Registrar log da ação
+    registrar_log(current_user, f"PDF do estoque gerado: fogo={numero_fogo}, modelo={modelo}, desenho={desenho}")
+
+    return send_file(buffer, as_attachment=True, download_name="estoque_pneus.pdf", mimetype='application/pdf')
+
+
+@main.route('/pneus/detalhes', methods=['GET'])
+@login_required
+def detalhes_pneu():
+    numero_fogo = request.args.get('numero_fogo', '').upper()
+
+    # Verifica se já foi aplicado
+    pneu = PneuAplicado.query.filter_by(numero_fogo=numero_fogo).order_by(PneuAplicado.id.desc()).first()
+    if pneu:
+        return jsonify({
+            'placa': pneu.placa,
+            'referencia': pneu.referencia,   # campo existe no PneuAplicado
+            'dot': pneu.dot,
+            'quantidade': 1
+        })
+
+    # Verifica no estoque
+    estoque = EstoquePneu.query.filter_by(numero_fogo=numero_fogo, status='DISPONIVEL').first()
+    if estoque:
+        return jsonify({
+            'placa': '',                      # Ainda não aplicado
+            'referencia': estoque.modelo,     # usa 'modelo' como referência
+            'dot': estoque.dot,
+            'quantidade': 1
+        })
+
+    return jsonify({})

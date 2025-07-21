@@ -5,7 +5,6 @@
   <title>{% block titulo %}Manutenção{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
-
 </head>
 <body class="pagina-base">
 
@@ -14,7 +13,7 @@
   <header class="navbar">
     <div class="navbar-logo">
       <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo">
-      <span class="sistema-titulo">Gestão de Manutenção  </span>
+      <span class="sistema-titulo">Gestão de Manutenção</span>
     </div>
     <nav class="navbar-menu">
       <ul>
@@ -27,9 +26,8 @@
 
         <!-- UNIDADES -->
         <li class="dropdown">
-        <a href="#" class="dropdown-toggle" onclick="toggleDropdown('unidades-menu'); return false;">Unidades ▾</a>
-        <ul class="dropdown-menu" id="unidades-menu">
-
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('unidades-menu'); return false;">Unidades ▾</a>
+          <ul class="dropdown-menu" id="unidades-menu">
             <li><a href="{{ url_for('main.lista_placas') }}">Todas as Placas</a></li>
             <li><a href="{{ url_for('main.filtrar_unidade', unidade='BAGAM') }}">BAGAM</a></li>
             <li><a href="{{ url_for('main.filtrar_unidade', unidade='BACRO') }}">BACRO</a></li>
@@ -46,6 +44,16 @@
             <li><a href="{{ url_for('main.realizar_manutencao') }}">Nova Manutenção</a></li>
             <li><a href="{{ url_for('main.cadastro_veiculo') }}">Cadastrar Veículo</a></li>
             <li><a href="{{ url_for('main.lista_placas') }}">📋 Veículos Cadastrados</a></li>
+          </ul>
+        </li>
+
+        <!-- PNEUS -->
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('pneus-menu'); return false;">🛞 Pneus ▾</a>
+          <ul class="dropdown-menu dropdown" id="pneus-menu">
+            <li><a href="{{ url_for('main.cadastrar_estoque') }}">➕ Cadastrar Pneu</a></li>
+            <li><a href="{{ url_for('main.mostrar_pneus') }}">📤 Aplicar Pneu</a></li>
+            <li><a href="{{ url_for('main.visualizar_estoque') }}">📦 Visualizar Estoque</a></li>
           </ul>
         </li>
 
@@ -77,31 +85,22 @@
   </div>
 
   <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
-  });
-
-  function toggleDropdown(id) {
-    const menu = document.getElementById(id);
-    const isOpen = menu.classList.contains('open');
-    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
-    if (!isOpen) menu.classList.add('open');
-  }
-
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest('.dropdown')) {
+    document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+    });
+
+    function toggleDropdown(id) {
+      const menu = document.getElementById(id);
+      const isOpen = menu.classList.contains('open');
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+      if (!isOpen) menu.classList.add('open');
     }
-  });
-</script>
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    console.log('Página carregada. Removendo dropdowns...');
-    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
-  });
-</script>
 
-
-
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+      }
+    });
+  </script>
 </body>
 </html>
