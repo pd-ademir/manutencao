@@ -15,7 +15,7 @@ from app.models import registrar_log, get_ip_real
 from flask import session
 from app.permissoes import tem_permissao
 from zoneinfo import ZoneInfo
-from app.utils import detectar_alteracoes
+from .utils import detectar_alteracoes
 from flask_wtf import CSRFProtect
 from flask import jsonify
 from app.forms import PneuAplicadoForm
