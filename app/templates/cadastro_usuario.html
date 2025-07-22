@@ -5,9 +5,9 @@
 {% block conteudo %}
 <h2 style="margin-bottom: 20px;">Gerenciar Usuários</h2>
 
-
-
 <form method="POST" action="{{ url_for('main.adicionar_usuario') }}" style="margin-bottom: 30px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {# 🔐 Proteção CSRF #}
+
   <fieldset style="border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
     <legend><strong>Novo Usuário</strong></legend>
 
@@ -52,6 +52,7 @@
         <td>
           {% if u.usuario != 'admin' %}
           <form method="POST" action="{{ url_for('main.remover_usuario', id=u.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {# 🔐 Proteção também na remoção #}
             <button type="submit"
                     onclick="return confirm('Deseja remover o usuário {{ u.usuario }}?')"
                     style="background-color: #990000; color: white; border: none; padding: 6px 12px;">
