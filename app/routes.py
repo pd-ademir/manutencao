@@ -499,7 +499,7 @@ from zoneinfo import ZoneInfo
 @main.route("/logs")
 @login_required
 def exibir_logs():
-    logs = LogSistema.query.limit(200).all()
+    logs = LogSistema.query.order_by(LogSistema.data.desc()).limit(200).all()
 
     for log in logs:
         if log.data.tzinfo is None:

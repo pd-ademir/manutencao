@@ -8,6 +8,7 @@
 
 
 <form method="POST" action="{{ url_for('main.adicionar_usuario') }}" style="margin-bottom: 30px;">
+  {{ form.hidden_tag() }}
   <fieldset style="border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
     <legend><strong>Novo Usuário</strong></legend>
 
