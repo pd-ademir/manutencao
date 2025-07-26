@@ -40,7 +40,7 @@
     </thead>
     <tbody>
       {% for veiculo in veiculos %}
-      {% if veiculo.unidade|lower|trim != 'smart' %}
+      
         <tr data-placa="{{ veiculo.placa }}" class="{% if veiculo.em_manutencao %}linha-manutencao{% endif %}">
           <td>
             <a href="{{ url_for('checklist.por_placa', placa=veiculo.placa) }}" class="link-primary text-decoration-none">
@@ -85,7 +85,7 @@
             </div>
           {% endif %}
         </tr>
-        {% endif %}
+       
       {% else %}
         <tr><td colspan="13">Nenhum veículo com manutenção próxima.</td></tr>
       {% endfor %}

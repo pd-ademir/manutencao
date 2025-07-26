@@ -18,7 +18,7 @@
   {% endwith %}
 
   {% for unidade, veiculos in unidades.items() %}
-   {% if unidade|lower|trim != 'smart' %}
+ 
     <div class="unidade">
       <h2>Unidade: {{ unidade }}</h2>
       <table class="tabela-index">
@@ -142,7 +142,7 @@
 </tbody>
     </table>
   </div>
-  {% endif %}
+ 
   {% endfor %}
 
 </div>
