@@ -223,7 +223,17 @@ def editar_veiculo(id):
 @requer_tipo("master", "comum", "teste", "visualizador")
 def realizar_manutencao():
     form = ManutencaoForm()
-    form.veiculo_id.choices = [(v.id, v.placa) for v in Veiculo.query.order_by(Veiculo.placa).all()]
+
+    # ✅ Define as opções de placas normalmente
+    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    form.veiculo_id.choices = [(v.id, v.placa) for v in veiculos]
+
+    # ✅ Verifica se a URL tem uma placa pré-selecionada
+    placa_parametro = request.args.get('placa_pre_selecionada', '').upper().strip()
+    if placa_parametro:
+        veiculo_pre_selecionado = next((v for v in veiculos if v.placa == placa_parametro), None)
+        if veiculo_pre_selecionado:
+            form.veiculo_id.data = veiculo_pre_selecionado.id  # Pré-seleciona no dropdown
 
     if form.validate_on_submit():
         # ❌ Impede submissão se o usuário não tiver permissão
@@ -267,6 +277,7 @@ def realizar_manutencao():
         return redirect(url_for('main.lista_placas'))
 
     return render_template('realizar_manutencao.html', form=form)
+
 
 
 @main.route('/excluir-veiculo/<int:id>')

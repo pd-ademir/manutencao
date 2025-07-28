@@ -74,8 +74,12 @@
               <button class="btn btn-warning btn-sm" onclick="alternarManutencao('{{ veiculo.placa }}')">
                 ⚙️ Em Manutenção
               </button>
-            </td>
           {% endif %}
+              <button onclick="window.location.href='{{ url_for('main.realizar_manutencao', placa_pre_selecionada=veiculo.placa) }}'" class="btn btn-info btn-sm" style="margin-left: 5px;">
+                + Nova Manutenção
+              </button>
+
+            </td>
           
           {% if veiculo.em_manutencao %}
             <div class="texto-corrente">
