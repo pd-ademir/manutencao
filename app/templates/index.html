@@ -33,9 +33,8 @@
         <th>Próx. Câmbio</th>
         <th>Próx. Calibragem</th>
         <th>Unidade</th>
-        {% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
-          <th>Ação</th>
-        {% endif %}
+        <th>Ação</th>
+
       </tr>
     </thead>
     <tbody>
@@ -69,18 +68,18 @@
           </td>
           <td>{{ veiculo.unidade }}</td>
 
-          {% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
-            <td>
-              <button class="btn btn-warning btn-sm" onclick="alternarManutencao('{{ veiculo.placa }}')">
-                ⚙️ Em Manutenção
-              </button>
-          {% endif %}
-              <button onclick="window.location.href='{{ url_for('main.realizar_manutencao', placa_pre_selecionada=veiculo.placa) }}'" class="btn btn-info btn-sm" style="margin-left: 5px;">
-                + Nova Manutenção
-              </button>
+          <td>
+  {% if current_user.tipo.upper() == 'MASTER' %}
+    <button class="btn btn-warning btn-sm" onclick="alternarManutencao('{{ veiculo.placa }}')">
+      ⚙️ Em Manutenção
+    </button>
+  {% endif %}
 
-            </td>
-          
+  <button onclick="window.location.href='{{ url_for('main.realizar_manutencao', placa_pre_selecionada=veiculo.placa) }}'" class="btn btn-info btn-sm" style="margin-left: 5px;">
+    + Nova Manutenção
+  </button>
+</td>
+         
           {% if veiculo.em_manutencao %}
             <div class="texto-corrente">
               <img src="/static/guincho.png" alt="Guincho" class="guincho-frontal">
