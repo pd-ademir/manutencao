@@ -25,6 +25,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from app.forms import EstoquePneuForm
 from app.models import EstoquePneu
+import pytz
 
 
 main = Blueprint('main', __name__)
@@ -64,6 +65,7 @@ def index():
     return render_template('index.html', veiculos=veiculos, current_date=hoje)
 
 
+
 @main.route('/atualizar-km/<int:id>', methods=['POST'])
 @login_required
 @requer_tipo("master", "comum")
@@ -72,12 +74,14 @@ def atualizar_km(id):
     novo_km = request.form.get('km_atual')
     if novo_km and novo_km.isdigit():
         veiculo.km_atual = int(novo_km)
+        veiculo.data_ultima_atualizacao_km = datetime.now(pytz.timezone("America/Fortaleza"))
         db.session.commit()
         registrar_log(current_user, f"Atualizou o KM do veículo {veiculo.placa} para {novo_km}")
         flash(f'KM do veículo {veiculo.placa} atualizado para {novo_km}', 'success')
     else:
         flash('KM inválido. Digite um número válido.', 'warning')
     return redirect(url_for('main.lista_placas'))
+
 
 @main.route('/cadastro-veiculo', methods=['GET', 'POST'])
 @login_required
@@ -264,12 +268,18 @@ def realizar_manutencao():
         if tipo == 'PREVENTIVA':
             veiculo.km_ultima_revisao_preventiva = km_realizado
             veiculo.km_ultima_revisao_intermediaria = km_realizado
+            veiculo.data_ultima_revisao_preventiva = form.data.data
+            veiculo.data_ultima_revisao_intermediaria = form.data.data
         elif tipo == 'INTERMEDIARIA':
             veiculo.km_ultima_revisao_intermediaria = km_realizado
+            veiculo.data_ultima_revisao_intermediaria = form.data.data
         elif tipo == 'DIFERENCIAL':
             veiculo.troca_oleo_diferencial = km_realizado
+            veiculo.data_troca_oleo_diferencial = form.data.data
         elif tipo == 'CAMBIO':
             veiculo.troca_oleo_cambio = km_realizado
+            veiculo.data_troca_oleo_cambio = form.data.data
+
 
         db.session.commit()
         registrar_log(current_user, f"Registrou manutenção {tipo} no veículo {veiculo.placa} na KM {km_realizado}")

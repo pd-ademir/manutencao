@@ -4,7 +4,6 @@
 {% block conteudo %}
 <h1>Painel de Manutenção</h1>
 
-<!-- ✅ Campo escondido para passar CSRF ao JS -->
 <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 
 {% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
@@ -34,12 +33,10 @@
         <th>Próx. Calibragem</th>
         <th>Unidade</th>
         <th>Ação</th>
-
       </tr>
     </thead>
     <tbody>
       {% for veiculo in veiculos %}
-      
         <tr data-placa="{{ veiculo.placa }}" class="{% if veiculo.em_manutencao %}linha-manutencao{% endif %}">
           <td>
             <a href="{{ url_for('checklist.por_placa', placa=veiculo.placa) }}" class="link-primary text-decoration-none">
@@ -50,45 +47,47 @@
           <td>{{ veiculo.placa_2 or '-' }}</td>
           <td>{{ veiculo.motorista }}</td>
           <td>{{ veiculo.modelo }}</td>
-          <td>{{ veiculo.km_atual | format_km }}</td>
-          <td class="{% if veiculo.km_para_preventiva is not none and veiculo.km_para_preventiva <= 5000 %}alerta{% endif %}">
+
+          <td title="Atualizado em: {{ veiculo.data_ultima_atualizacao_km.strftime('%d/%m/%Y %H:%M') if veiculo.data_ultima_atualizacao_km else 'Sem registro' }}">
+            {{ veiculo.km_atual | format_km }}
+          </td>
+
+          <td title="Preventiva em: {{ veiculo.data_ultima_revisao_preventiva.strftime('%d/%m/%Y') if veiculo.data_ultima_revisao_preventiva else 'Sem registro' }}"
+              class="{% if veiculo.km_para_preventiva is not none and veiculo.km_para_preventiva <= 5000 %}alerta{% endif %}">
             {{ veiculo.km_para_preventiva | format_km if veiculo.km_para_preventiva is not none else '-' }}
           </td>
-          <td class="{% if veiculo.km_para_intermediaria is not none and veiculo.km_para_intermediaria <= 5000 %}alerta{% endif %}">
+
+          <td title="Intermediária em: {{ veiculo.data_ultima_revisao_intermediaria.strftime('%d/%m/%Y') if veiculo.data_ultima_revisao_intermediaria else 'Sem registro' }}"
+              class="{% if veiculo.km_para_intermediaria is not none and veiculo.km_para_intermediaria <= 5000 %}alerta{% endif %}">
             {{ veiculo.km_para_intermediaria | format_km if veiculo.km_para_intermediaria is not none else '-' }}
           </td>
-          <td class="{% if veiculo.km_para_diferencial is not none and veiculo.km_para_diferencial <= 5000 %}alerta{% endif %}">
+
+          <td title="Diferencial em: {{ veiculo.data_troca_oleo_diferencial.strftime('%d/%m/%Y') if veiculo.data_troca_oleo_diferencial else 'Sem registro' }}"
+              class="{% if veiculo.km_para_diferencial is not none and veiculo.km_para_diferencial <= 5000 %}alerta{% endif %}">
             {{ veiculo.km_para_diferencial | format_km if veiculo.km_para_diferencial is not none else '-' }}
           </td>
-          <td class="{% if veiculo.km_para_cambio is not none and veiculo.km_para_cambio <= 5000 %}alerta{% endif %}">
+
+          <td title="Câmbio em: {{ veiculo.data_troca_oleo_cambio.strftime('%d/%m/%Y') if veiculo.data_troca_oleo_cambio else 'Sem registro' }}"
+              class="{% if veiculo.km_para_cambio is not none and veiculo.km_para_cambio <= 5000 %}alerta{% endif %}">
             {{ veiculo.km_para_cambio | format_km if veiculo.km_para_cambio is not none else '-' }}
           </td>
-          <td class="{% if veiculo.data_proxima_calibragem and veiculo.data_proxima_calibragem <= current_date %}alerta{% endif %}">
+
+          <td title="Última calibragem: {{ veiculo.data_calibragem.strftime('%d/%m/%Y') if veiculo.data_calibragem else 'Sem registro' }}"
+              class="{% if veiculo.data_proxima_calibragem and veiculo.data_proxima_calibragem <= current_date %}alerta{% endif %}">
             {{ veiculo.data_proxima_calibragem.strftime('%d/%m/%Y') if veiculo.data_proxima_calibragem else '-' }}
           </td>
+
           <td>{{ veiculo.unidade }}</td>
 
           <td>
-  {% if current_user.tipo.upper() == 'MASTER' %}
-    <button class="btn btn-warning btn-sm" onclick="alternarManutencao('{{ veiculo.placa }}')">
-      ⚙️ Em Manutenção
-    </button>
-  {% endif %}
-
-  <button onclick="window.location.href='{{ url_for('main.realizar_manutencao', placa_pre_selecionada=veiculo.placa) }}'" class="btn btn-info btn-sm" style="margin-left: 5px;">
-    + Nova Manutenção
-  </button>
-</td>
-         
-          {% if veiculo.em_manutencao %}
-            <div class="texto-corrente">
-              <img src="/static/guincho.png" alt="Guincho" class="guincho-frontal">
-              <img src="/static/carro-sem-fundo.png" alt="Carro em manutenção">
-              <span>🚧 VEÍCULO EM MANUTENÇÃO</span>
-            </div>
-          {% endif %}
+            {% if current_user.tipo.upper() == 'MASTER' %}
+              <button class="btn btn-warning btn-sm" onclick="alternarManutencao('{{ veiculo.placa }}')">⚙️ Em Manutenção</button>
+            {% endif %}
+            <button onclick="window.location.href='{{ url_for('main.realizar_manutencao', placa_pre_selecionada=veiculo.placa) }}'" class="btn btn-info btn-sm" style="margin-left: 5px;">
+              + Nova Manutenção
+            </button>
+          </td>
         </tr>
-       
       {% else %}
         <tr><td colspan="13">Nenhum veículo com manutenção próxima.</td></tr>
       {% endfor %}
@@ -96,11 +95,9 @@
   </table>
 </div>
 
-<!-- ✅ JavaScript usando CSRF corretamente -->
 <script>
   function alternarManutencao(placa) {
     const token = document.getElementById("csrf_token").value;
-
     fetch(`/manutencao/${placa}`, {
       method: 'POST',
       headers: {

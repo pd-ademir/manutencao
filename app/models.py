@@ -50,12 +50,15 @@ class Veiculo(db.Model):
     km_ultima_revisao_intermediaria = db.Column(db.Integer)
     km_troca_preventiva = db.Column(db.Integer, nullable=False)
     km_troca_intermediaria = db.Column(db.Integer, nullable=False)
-
     km_atual = db.Column(db.Integer, default=0)
+    data_ultima_atualizacao_km = db.Column(db.DateTime)
+    data_ultima_revisao_preventiva = db.Column(db.Date)
+    data_ultima_revisao_intermediaria = db.Column(db.Date)
+    data_troca_oleo_diferencial = db.Column(db.Date)
+    data_troca_oleo_cambio = db.Column(db.Date)
+    data_proxima_calibragem = db.Column(db.Date, nullable=True)
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
-
-    em_manutencao = db.Column(db.Boolean, default=False)  # ✅ NOVO CAMPO AQUI
-
+    em_manutencao = db.Column(db.Boolean, default=False)
     manutencoes = db.relationship('Manutencao', backref='veiculo', lazy=True)
 
     # --- Propriedades calculadas ---

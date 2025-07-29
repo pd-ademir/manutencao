@@ -1,9 +1,27 @@
-from app import create_app
-from app.models import db
+import sqlite3
 
-app = create_app()
+caminho_banco = r"C:\Users\Transp - Ornilio\Downloads\python\manutencao\instance\db.sqlite3"
 
-with app.app_context():
-    with db.engine.connect() as connection:
-        connection.execute(db.text("ALTER TABLE veiculo ADD COLUMN km_ultima_revisao INTEGER"))
-        print("🚀 Campo km_ultima_revisao adicionado com sucesso!")
+conn = sqlite3.connect(caminho_banco)
+cursor = conn.cursor()
+
+colunas_para_adicionar = {
+    "data_ultima_revisao_preventiva": "TEXT",
+    "data_ultima_revisao_intermediaria": "TEXT",
+    "data_troca_oleo_diferencial": "TEXT",
+    "data_troca_oleo_cambio": "TEXT",
+    "data_proxima_calibragem": "TEXT"
+}
+
+for nome_coluna, tipo in colunas_para_adicionar.items():
+    try:
+        cursor.execute(f"ALTER TABLE veiculo ADD COLUMN {nome_coluna} {tipo};")
+        print(f"✅ Coluna '{nome_coluna}' adicionada com sucesso!")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print(f"ℹ️ A coluna '{nome_coluna}' já existe.")
+        else:
+            print(f"❌ Erro ao adicionar coluna '{nome_coluna}':", e)
+
+conn.commit()
+conn.close()
