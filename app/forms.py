@@ -48,9 +48,10 @@ class ManutencaoForm(FlaskForm):
     ("PREVENTIVA", "Preventiva"),
     ("INTERMEDIARIA", "Intermediária"),
     ("DIFERENCIAL", "Diferencial"),
-    ("CAMBIO", "Câmbio")
+    ("CAMBIO", "Câmbio"),
+    ('CARRETA', 'Carreta')
     ], validators=[DataRequired()])
-    km_realizado = IntegerField('KM Atual', validators=[DataRequired()])
+    km_realizado = IntegerField('KM Atual', validators=[Optional()])
     observacoes = TextAreaField('Observações')
     submit = SubmitField('Registrar')
 

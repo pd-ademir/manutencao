@@ -26,6 +26,7 @@ from reportlab.pdfgen import canvas
 from app.forms import EstoquePneuForm
 from app.models import EstoquePneu
 import pytz
+from dateutil.relativedelta import relativedelta
 
 
 main = Blueprint('main', __name__)
@@ -58,11 +59,13 @@ def index():
             (v.km_para_intermediaria and v.km_para_intermediaria <= 5000) or
             (v.km_para_diferencial and v.km_para_diferencial <= 5000) or
             (v.km_para_cambio and v.km_para_cambio <= 5000) or
-            (v.data_proxima_calibragem and v.data_proxima_calibragem <= hoje)
+            (v.data_proxima_calibragem and v.data_proxima_calibragem <= hoje) or
+            (v.data_proxima_revisao_carreta and v.data_proxima_revisao_carreta <= hoje + timedelta(days=30))  # ✅ ADICIONADO
         )
     ]
 
     return render_template('index.html', veiculos=veiculos, current_date=hoje)
+
 
 
 
@@ -227,66 +230,89 @@ def editar_veiculo(id):
 @requer_tipo("master", "comum", "teste", "visualizador")
 def realizar_manutencao():
     form = ManutencaoForm()
-
-    # ✅ Define as opções de placas normalmente
     veiculos = Veiculo.query.order_by(Veiculo.placa).all()
     form.veiculo_id.choices = [(v.id, v.placa) for v in veiculos]
 
-    # ✅ Verifica se a URL tem uma placa pré-selecionada
     placa_parametro = request.args.get('placa_pre_selecionada', '').upper().strip()
     if placa_parametro:
         veiculo_pre_selecionado = next((v for v in veiculos if v.placa == placa_parametro), None)
         if veiculo_pre_selecionado:
-            form.veiculo_id.data = veiculo_pre_selecionado.id  # Pré-seleciona no dropdown
+            form.veiculo_id.data = veiculo_pre_selecionado.id
 
     if form.validate_on_submit():
-        # ❌ Impede submissão se o usuário não tiver permissão
         if not tem_permissao(current_user.tipo, "alterar_dados"):
             flash("Você não tem permissão para registrar manutenções.", "warning")
             return redirect(url_for('main.realizar_manutencao'))
 
         veiculo = Veiculo.query.get(form.veiculo_id.data)
-        tipo = form.tipo.data.upper()
-        km_realizado = form.km_realizado.data
+        if not veiculo:
+            flash("Veículo não encontrado.", "danger")
+            return redirect(url_for('main.realizar_manutencao'))
 
-        # Criação da manutenção
+        tipo = form.tipo.data.upper()
+        km_realizado = form.km_realizado.data or 0
+        data_manutencao = form.data.data
+        data_proxima = None
+
+        if tipo == 'CARRETA':
+            if km_realizado == 0:
+                data_base = veiculo.data_proxima_revisao_carreta or data_manutencao
+                data_proxima = data_base + relativedelta(months=6)
+                veiculo.data_proxima_revisao_carreta = data_proxima
+                veiculo.km_ultima_revisao_carreta = None
+            else:
+                veiculo.km_ultima_revisao_carreta = km_realizado
+            veiculo.data_ultima_revisao_carreta = data_manutencao
+
+        else:
+            if km_realizado == 0:
+                flash("Informe o KM atual para este tipo de manutenção.", "danger")
+                return redirect(url_for('main.realizar_manutencao'))
+
+            if tipo == 'PREVENTIVA':
+                veiculo.km_ultima_revisao_preventiva = km_realizado
+                veiculo.km_ultima_revisao_intermediaria = km_realizado
+                veiculo.data_ultima_revisao_preventiva = data_manutencao
+                veiculo.data_ultima_revisao_intermediaria = data_manutencao
+            elif tipo == 'INTERMEDIARIA':
+                veiculo.km_ultima_revisao_intermediaria = km_realizado
+                veiculo.data_ultima_revisao_intermediaria = data_manutencao
+            elif tipo == 'DIFERENCIAL':
+                veiculo.troca_oleo_diferencial = km_realizado
+                veiculo.data_troca_oleo_diferencial = data_manutencao
+            elif tipo == 'CAMBIO':
+                veiculo.troca_oleo_cambio = km_realizado
+                veiculo.data_troca_oleo_cambio = data_manutencao
+
         manut = Manutencao(
             veiculo_id=veiculo.id,
             motorista=veiculo.motorista,
             placa=veiculo.placa,
             modelo=veiculo.modelo,
             fabricante=veiculo.fabricante,
-            km_atual=km_realizado,
-            km_troca=km_realizado,
-            data_troca=form.data.data,
-            data_proxima=None,
-            observacoes=form.observacoes.data.upper() if form.observacoes.data else None
+            km_atual=km_realizado if km_realizado else None,
+            km_troca=km_realizado if km_realizado else None,
+            data_troca=data_manutencao,
+            data_proxima=data_proxima,
+            observacoes=form.observacoes.data.upper() if form.observacoes.data else None,
+            tipo=tipo
         )
+
         db.session.add(manut)
+        db.session.add(veiculo)
+        try:
+            db.session.commit()
+            flash(f'{tipo.title()} registrada com sucesso para {veiculo.placa}!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao registrar manutenção.', 'danger')
+            return redirect(url_for('main.realizar_manutencao'))
 
-        # Atualiza o campo correto do veículo
-        if tipo == 'PREVENTIVA':
-            veiculo.km_ultima_revisao_preventiva = km_realizado
-            veiculo.km_ultima_revisao_intermediaria = km_realizado
-            veiculo.data_ultima_revisao_preventiva = form.data.data
-            veiculo.data_ultima_revisao_intermediaria = form.data.data
-        elif tipo == 'INTERMEDIARIA':
-            veiculo.km_ultima_revisao_intermediaria = km_realizado
-            veiculo.data_ultima_revisao_intermediaria = form.data.data
-        elif tipo == 'DIFERENCIAL':
-            veiculo.troca_oleo_diferencial = km_realizado
-            veiculo.data_troca_oleo_diferencial = form.data.data
-        elif tipo == 'CAMBIO':
-            veiculo.troca_oleo_cambio = km_realizado
-            veiculo.data_troca_oleo_cambio = form.data.data
-
-
-        db.session.commit()
         registrar_log(current_user, f"Registrou manutenção {tipo} no veículo {veiculo.placa} na KM {km_realizado}")
-        flash(f'{tipo.title()} registrada com sucesso para {veiculo.placa}!', 'success')
         return redirect(url_for('main.lista_placas'))
 
     return render_template('realizar_manutencao.html', form=form)
+
 
 
 

@@ -39,10 +39,14 @@
       {% for veiculo in veiculos %}
         <tr data-placa="{{ veiculo.placa }}" class="{% if veiculo.em_manutencao %}linha-manutencao{% endif %}">
           <td>
-            <a href="{{ url_for('checklist.por_placa', placa=veiculo.placa) }}" class="link-primary text-decoration-none">
+            <a href="{{ url_for('checklist.por_placa', placa=veiculo.placa) }}"
+              class="link-primary text-decoration-none"
+              title="Próxima revisão da carreta: {{ veiculo.data_proxima_revisao_carreta.strftime('%d/%m/%Y') if veiculo.data_proxima_revisao_carreta else 'Sem previsão' }}">
               {{ veiculo.placa }}
             </a>
           </td>
+
+
           <td>{{ veiculo.placa_1 or '-' }}</td>
           <td>{{ veiculo.placa_2 or '-' }}</td>
           <td>{{ veiculo.motorista }}</td>

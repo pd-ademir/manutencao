@@ -12,6 +12,7 @@ class Manutencao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     veiculo_id = db.Column(db.Integer, db.ForeignKey('veiculo.id'), nullable=False)
 
+    tipo = db.Column(db.String(50), nullable=False)  # ← Novo campo
     motorista = db.Column(db.String(100), nullable=False)
     placa = db.Column(db.String(10), nullable=False)
     modelo = db.Column(db.String(50))
@@ -26,6 +27,7 @@ class Manutencao(db.Model):
         return f'<Manutencao {self.placa} - {self.data_troca}>'
 
 
+
 class Veiculo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     placa = db.Column(db.String(10), nullable=False, unique=True)
@@ -33,19 +35,14 @@ class Veiculo(db.Model):
     fabricante = db.Column(db.String(50))
     ano = db.Column(db.String(4))
     unidade = db.Column(db.String(50), nullable=False)
-    motorista = db.Column(db.String(100), nullable=False)
-    
+    motorista = db.Column(db.String(100), nullable=False)    
     placa_1 = db.Column(db.String(10))
-    placa_2 = db.Column(db.String(10))
-    
-    data_calibragem = db.Column(db.Date)
-    
+    placa_2 = db.Column(db.String(10))    
+    data_calibragem = db.Column(db.Date)    
     troca_oleo_diferencial = db.Column(db.Integer)
-    intervalo_oleo_diferencial = db.Column(db.Integer)
-    
+    intervalo_oleo_diferencial = db.Column(db.Integer)    
     troca_oleo_cambio = db.Column(db.Integer)
-    intervalo_oleo_cambio = db.Column(db.Integer)
-    
+    intervalo_oleo_cambio = db.Column(db.Integer)    
     km_ultima_revisao_preventiva = db.Column(db.Integer)
     km_ultima_revisao_intermediaria = db.Column(db.Integer)
     km_troca_preventiva = db.Column(db.Integer, nullable=False)
@@ -60,6 +57,7 @@ class Veiculo(db.Model):
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     em_manutencao = db.Column(db.Boolean, default=False)
     manutencoes = db.relationship('Manutencao', backref='veiculo', lazy=True)
+    data_proxima_revisao_carreta = db.Column(db.Date)
 
     # --- Propriedades calculadas ---
 
