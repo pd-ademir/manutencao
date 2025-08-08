@@ -1,15 +1,11 @@
-
-
 {% extends 'base.html' %}
 
 {% block titulo %}Painel de Manutenção{% endblock %}
 
 {% block conteudo %}
 
-  <!-- Título -->
   <h1>Registrar Manutenção</h1>
 
-  <!-- Formulário -->
   <form method="POST" class="formulario">
     {{ form.csrf_token }}
 
@@ -49,11 +45,11 @@
     </div>
 
     <div class="form-group">
-    <button type="submit" class="btn-verde" {% if not tem_permissao(current_user.tipo, 'alterar_dados') %}disabled title="Apenas leitura"{% endif %}>
-      Registrar
-    </button>
+      <button type="submit" class="btn-verde" {% if not tem_permissao(current_user.tipo, 'alterar_dados') %}disabled title="Apenas leitura"{% endif %}>
+        Registrar
+      </button>
     </div>
-    {% endblock %}
+
   </form>
-</body>
-</html>
+
+{% endblock %}
