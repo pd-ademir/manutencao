@@ -227,6 +227,9 @@ def editar_veiculo(id):
 
 
 
+    import sys
+import traceback
+
 @main.route('/realizar-manutencao', methods=['GET', 'POST'])
 @login_required
 @requer_tipo("master", "comum", "teste", "visualizador")
@@ -308,7 +311,7 @@ def realizar_manutencao():
         except Exception as e:
             db.session.rollback()
             print("Erro ao registrar manutenção:", e, file=sys.stderr)
-            traceback.print_exc()
+            traceback.print_exc(file=sys.stderr)  # importante direcionar para stderr
             flash('Erro ao registrar manutenção.', 'danger')
             return redirect(url_for('main.realizar_manutencao'))
 
