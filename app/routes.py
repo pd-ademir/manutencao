@@ -27,6 +27,8 @@ from app.forms import EstoquePneuForm
 from app.models import EstoquePneu
 import pytz
 from dateutil.relativedelta import relativedelta
+import traceback
+import sys
 
 
 main = Blueprint('main', __name__)
@@ -305,6 +307,8 @@ def realizar_manutencao():
             flash(f'{tipo.title()} registrada com sucesso para {veiculo.placa}!', 'success')
         except Exception as e:
             db.session.rollback()
+            print("Erro ao registrar manutenção:", e, file=sys.stderr)
+            traceback.print_exc()
             flash('Erro ao registrar manutenção.', 'danger')
             return redirect(url_for('main.realizar_manutencao'))
 
