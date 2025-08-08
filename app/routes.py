@@ -3,7 +3,7 @@ from collections import defaultdict
 from .forms import VehicleForm, ManutencaoForm
 from .models import db, Veiculo, Manutencao
 from alertas import gerar_resumo_veiculos, extrair_dados, disparar_alertas_reais
-from datetime import datetime, date
+from datetime import datetime, timedelta,date
 from xhtml2pdf import pisa
 from io import BytesIO
 from flask_login import login_user, logout_user, login_required, current_user
