@@ -5,6 +5,21 @@
 <h1>Painel de Manutenção</h1>
 
 <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+<form method="get" action="{{ url_for('main.index') }}">
+  {% if request.args.get('filtro') == 'ocultar_somente_calibragem' %}
+    <button class="btn btn-secondary" style="margin-bottom: 15px;">
+      🔄 Mostrar todos os veículos
+    </button>
+  {% else %}
+    <input type="hidden" name="filtro" value="ocultar_somente_calibragem">
+    <button class="btn btn-secondary" style="margin-bottom: 15px;">
+      🚫 Ocultar veículos com apenas calibragem vencida
+    </button>
+  {% endif %}
+</form>
+
+
+
 
 {% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
   <form action="{{ url_for('main.teste_alerta') }}" method="get">

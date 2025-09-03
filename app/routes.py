@@ -54,17 +54,30 @@ def index():
     print(f"Usuário autenticado? {current_user.is_authenticated}")
     hoje = date.today()
     todos = Veiculo.query.order_by(Veiculo.placa).all()
+    filtro = request.args.get('filtro')
 
-    veiculos = [
-        v for v in todos if (
-            (v.km_para_preventiva and v.km_para_preventiva <= 5000) or
-            (v.km_para_intermediaria and v.km_para_intermediaria <= 5000) or
-            (v.km_para_diferencial and v.km_para_diferencial <= 5000) or
-            (v.km_para_cambio and v.km_para_cambio <= 5000) or
-            (v.data_proxima_calibragem and v.data_proxima_calibragem <= hoje) or
-            (v.data_proxima_revisao_carreta and v.data_proxima_revisao_carreta <= hoje + timedelta(days=30))  # ✅ ADICIONADO
-        )
-    ]
+    def manutencao_relevante(v):
+        return any([
+            v.km_para_preventiva and v.km_para_preventiva <= 5000,
+            v.km_para_intermediaria and v.km_para_intermediaria <= 5000,
+            v.km_para_diferencial and v.km_para_diferencial <= 5000,
+            v.km_para_cambio and v.km_para_cambio <= 5000
+        ])
+
+    veiculos = []
+    for v in todos:
+        calibragem_vencida = v.data_proxima_calibragem and v.data_proxima_calibragem <= hoje
+        revisao_carreta_vencida = v.data_proxima_revisao_carreta and v.data_proxima_revisao_carreta <= hoje + timedelta(days=30)
+        outras_manutencoes = manutencao_relevante(v)
+
+        if filtro == 'ocultar_somente_calibragem':
+            # Exibe apenas se tiver outras manutenções ou revisão de carreta
+            if outras_manutencoes or revisao_carreta_vencida:
+                veiculos.append(v)
+        else:
+            # Exibe todos com qualquer manutenção relevante
+            if outras_manutencoes or calibragem_vencida or revisao_carreta_vencida:
+                veiculos.append(v)
 
     return render_template('index.html', veiculos=veiculos, current_date=hoje)
 
