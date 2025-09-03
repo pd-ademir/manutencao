@@ -18,9 +18,6 @@
   {% endif %}
 </form>
 
-
-
-
 {% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
   <form action="{{ url_for('main.teste_alerta') }}" method="get">
     <button class="btn btn-danger" style="margin-bottom: 15px; background: #28a745">
@@ -101,6 +98,17 @@
           </td>
         </tr>
 
+        {% if veiculo.manutencoes_vencidas %}
+          <tr class="linha-bloqueio">
+            <td colspan="13">
+              <div class="alerta-bloqueio">
+                🚫 <strong>VEÍCULO BLOQUEADO</strong>: Manutenção vencida — {{ veiculo.manutencoes_vencidas | join(', ') }}.
+                <br>Este veículo <strong>não deve entrar em operação</strong> até que a manutenção seja realizada.
+              </div>
+            </td>
+          </tr>
+        {% endif %}
+
         {% if veiculo.em_manutencao %}
           <tr>
             <td colspan="13" style="position: relative;">
@@ -138,4 +146,25 @@
     });
   }
 </script>
+
+<style>
+  .linha-bloqueio {
+    background-color: #ff4d4d;
+    color: white;
+    font-weight: bold;
+    animation: piscar 1s infinite;
+  }
+
+  @keyframes piscar {
+    0% { background-color: #ff4d4d; }
+    50% { background-color: #ff9999; }
+    100% { background-color: #ff4d4d; }
+  }
+
+  .alerta-bloqueio {
+    padding: 10px;
+    font-size: 1.1em;
+    text-align: center;
+  }
+</style>
 {% endblock %}

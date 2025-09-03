@@ -63,12 +63,27 @@ def index():
             v.km_para_diferencial and v.km_para_diferencial <= 5000,
             v.km_para_cambio and v.km_para_cambio <= 5000
         ])
+    
+    def manutencao_vencida(v):
+        tipos = []
+        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0:
+            tipos.append("Preventiva")
+        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0:
+            tipos.append("Intermediária")
+        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0:
+            tipos.append("Diferencial")
+        if v.km_para_cambio is not None and v.km_para_cambio <= 0:
+            tipos.append("Câmbio")
+        return tipos
+
 
     veiculos = []
     for v in todos:
         calibragem_vencida = v.data_proxima_calibragem and v.data_proxima_calibragem <= hoje
         revisao_carreta_vencida = v.data_proxima_revisao_carreta and v.data_proxima_revisao_carreta <= hoje + timedelta(days=30)
         outras_manutencoes = manutencao_relevante(v)
+        v.manutencoes_vencidas = manutencao_vencida(v)
+
 
         if filtro == 'ocultar_somente_calibragem':
             # Exibe apenas se tiver outras manutenções ou revisão de carreta
