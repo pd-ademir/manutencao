@@ -840,3 +840,182 @@ def detalhes_pneu():
         })
 
     return jsonify({})
+
+#################################################################
+#RELAORIOS
+from flask import make_response, request, redirect, url_for, flash
+from xhtml2pdf import pisa
+from io import BytesIO
+
+@main.route('/relatorios/pdf')
+@login_required
+def baixar_relatorio_pdf():
+    tipo = request.args.get('tipo')
+
+    todos = Veiculo.query.order_by(Veiculo.placa).all()
+    manutencoes_realizadas = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
+
+    def manutencoes_a_vencer(v):
+        tipos = []
+        if v.km_para_preventiva and v.km_para_preventiva <= 5000:
+            tipos.append(("Preventiva", v.km_para_preventiva))
+        if v.km_para_intermediaria and v.km_para_intermediaria <= 5000:
+            tipos.append(("Intermediária", v.km_para_intermediaria))
+        if v.km_para_diferencial and v.km_para_diferencial <= 5000:
+            tipos.append(("Diferencial", v.km_para_diferencial))
+        if v.km_para_cambio and v.km_para_cambio <= 5000:
+            tipos.append(("Câmbio", v.km_para_cambio))
+        return tipos
+
+    def manutencoes_vencidas(v):
+        tipos = []
+        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0:
+            tipos.append("Preventiva")
+        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0:
+            tipos.append("Intermediária")
+        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0:
+            tipos.append("Diferencial")
+        if v.km_para_cambio is not None and v.km_para_cambio <= 0:
+            tipos.append("Câmbio")
+        return tipos
+
+    veiculos_a_vencer = []
+    veiculos_bloqueados = []
+
+    for v in todos:
+        v.manutencoes_a_vencer = manutencoes_a_vencer(v)
+        v.manutencoes_vencidas = manutencoes_vencidas(v)
+
+        if v.manutencoes_a_vencer:
+            veiculos_a_vencer.append(v)
+        if v.manutencoes_vencidas:
+            veiculos_bloqueados.append(v)
+
+    # Geração do conteúdo HTML direto
+    if tipo == 'a_vencer':
+        filename = 'manutencoes_a_vencer.pdf'
+        html = "<h1>Veículos com Manutenções a Vencer</h1><table border='1'><tr><th>Placa</th><th>Tipo</th><th>KM</th><th>Unidade</th><th>Motorista</th></tr>"
+        for v in veiculos_a_vencer:
+            for tipo_manut, km in v.manutencoes_a_vencer:
+                html += f"<tr><td>{v.placa}</td><td>{tipo_manut}</td><td>{km}</td><td>{v.unidade}</td><td>{v.motorista}</td></tr>"
+        html += "</table>"
+
+    elif tipo == 'realizadas':
+        filename = 'manutencoes_realizadas.pdf'
+        html = "<h1>Manutenções Realizadas</h1><table border='1'><tr><th>Placa</th><th>Tipo</th><th>Data</th><th>KM</th><th>Motorista</th></tr>"
+        for m in manutencoes_realizadas:
+            data = m.data_troca.strftime('%d/%m/%Y') if m.data_troca else '—'
+            km = m.km_atual if m.km_atual else '—'
+            html += f"<tr><td>{m.placa}</td><td>{m.tipo}</td><td>{data}</td><td>{km}</td><td>{m.motorista}</td></tr>"
+        html += "</table>"
+
+    elif tipo == 'bloqueados':
+        filename = 'veiculos_bloqueados.pdf'
+        html = "<h1>Veículos Bloqueados por Manutenção Vencida</h1><table border='1'><tr><th>Placa</th><th>Vencidas</th><th>KM</th><th>Unidade</th><th>Status</th></tr>"
+        for v in veiculos_bloqueados:
+            vencidas = ", ".join(v.manutencoes_vencidas)
+            html += f"<tr><td>{v.placa}</td><td>{vencidas}</td><td>{v.km_atual}</td><td>{v.unidade}</td><td>BLOQUEADO</td></tr>"
+        html += "</table>"
+
+    else:
+        flash('Tipo de relatório inválido.', 'danger')
+        return redirect(url_for('main.relatorios'))
+
+    # Gerar PDF
+    pdf_stream = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=pdf_stream)
+
+    if pisa_status.err:
+        flash('Erro ao gerar o PDF.', 'danger')
+        return redirect(url_for('main.relatorios'))
+
+    response = make_response(pdf_stream.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
+
+
+from flask import render_template, make_response, request, redirect, url_for, flash
+from xhtml2pdf import pisa
+from io import BytesIO
+from datetime import date
+from xhtml2pdf import pisa
+from io import BytesIO
+
+
+@main.route('/relatorios/pdf')
+@login_required
+def relatorios_pdf():
+    tipo = request.args.get('tipo')
+    hoje = date.today()
+    todos = Veiculo.query.order_by(Veiculo.placa).all()
+    manutencoes_realizadas = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
+
+    def manutencoes_a_vencer(v):
+        tipos = []
+        if v.km_para_preventiva and v.km_para_preventiva <= 5000:
+            tipos.append(("Preventiva", v.km_para_preventiva))
+        if v.km_para_intermediaria and v.km_para_intermediaria <= 5000:
+            tipos.append(("Intermediária", v.km_para_intermediaria))
+        if v.km_para_diferencial and v.km_para_diferencial <= 5000:
+            tipos.append(("Diferencial", v.km_para_diferencial))
+        if v.km_para_cambio and v.km_para_cambio <= 5000:
+            tipos.append(("Câmbio", v.km_para_cambio))
+        return tipos
+
+    def manutencoes_vencidas(v):
+        tipos = []
+        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0:
+            tipos.append("Preventiva")
+        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0:
+            tipos.append("Intermediária")
+        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0:
+            tipos.append("Diferencial")
+        if v.km_para_cambio is not None and v.km_para_cambio <= 0:
+            tipos.append("Câmbio")
+        return tipos
+
+    veiculos_a_vencer = []
+    veiculos_bloqueados = []
+
+    for v in todos:
+        v.manutencoes_a_vencer = manutencoes_a_vencer(v)
+        v.manutencoes_vencidas = manutencoes_vencidas(v)
+
+        if v.manutencoes_a_vencer:
+            veiculos_a_vencer.append(v)
+        if v.manutencoes_vencidas:
+            veiculos_bloqueados.append(v)
+
+    # Escolha do template conforme o tipo
+    if tipo == 'a_vencer':
+        html = render_template('relatorio_a_vencer.html', veiculos_a_vencer=veiculos_a_vencer)
+        filename = 'manutencoes_a_vencer.pdf'
+    elif tipo == 'realizadas':
+        html = render_template('relatorio_realizadas.html', manutencoes_realizadas=manutencoes_realizadas)
+        filename = 'manutencoes_realizadas.pdf'
+    elif tipo == 'bloqueados':
+        html = render_template('relatorio_bloqueados.html', veiculos_bloqueados=veiculos_bloqueados)
+        filename = 'veiculos_bloqueados.pdf'
+    else:
+        flash('Tipo de relatório inválido.', 'danger')
+        return redirect(url_for('main.relatorios'))
+
+    # Geração do PDF com xhtml2pdf
+    pdf_stream = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=pdf_stream)
+
+    if pisa_status.err:
+        flash('Erro ao gerar o PDF.', 'danger')
+        return redirect(url_for('main.relatorios'))
+
+    response = make_response(pdf_stream.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
+
+
+@main.route('/relatorios')
+@login_required
+def relatorios():
+    return render_template('relatorios.html')

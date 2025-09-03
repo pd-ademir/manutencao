@@ -17,16 +17,18 @@
     </div>
     <nav class="navbar-menu">
       <ul>
-        <li><a href="{{ url_for('main.index') }}">Início</a></li>
+        <li><a href="{{ url_for('main.index') }}">🏠 Início</a></li>
 
         {% if current_user.tipo == 'master' %}
-          <li><a href="{{ url_for('main.gerenciar_usuarios') }}">Usuários</a></li>
-          <li><a href="{{ url_for('main.exibir_logs') }}">Logs</a></li>
+          <li><a href="{{ url_for('main.gerenciar_usuarios') }}">👥 Usuários</a></li>
+          <li><a href="{{ url_for('main.exibir_logs') }}">📜 Logs</a></li>
+          <li><a href="{{ url_for('main.relatorios') }}">📊 Relatórios</a></li>
+
         {% endif %}
 
         <!-- UNIDADES -->
         <li class="dropdown">
-          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('unidades-menu'); return false;">Unidades ▾</a>
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('unidades-menu'); return false;">🏢 Unidades ▾</a>
           <ul class="dropdown-menu" id="unidades-menu">
             <li><a href="{{ url_for('main.lista_placas') }}">Todas as Placas</a></li>
             <li><a href="{{ url_for('main.filtrar_unidade', unidade='BAGAM') }}">BAGAM</a></li>
@@ -39,10 +41,10 @@
 
         <!-- AÇÕES -->
         <li class="dropdown">
-          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('acoes-menu'); return false;">Ações ▾</a>
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown('acoes-menu'); return false;">⚙️ Ações ▾</a>
           <ul class="dropdown-menu dropdown" id="acoes-menu">
-            <li><a href="{{ url_for('main.realizar_manutencao') }}">Nova Manutenção</a></li>
-            <li><a href="{{ url_for('main.cadastro_veiculo') }}">Cadastrar Veículo</a></li>
+            <li><a href="{{ url_for('main.realizar_manutencao') }}">➕ Nova Manutenção</a></li>
+            <li><a href="{{ url_for('main.cadastro_veiculo') }}">➕ Cadastrar Veículo</a></li>
             <li><a href="{{ url_for('main.lista_placas') }}">📋 Veículos Cadastrados</a></li>
           </ul>
         </li>
@@ -58,7 +60,7 @@
         </li>
 
         <!-- SAIR -->
-        <li style="margin-left:auto;"><a href="{{ url_for('main.logout') }}">Sair</a></li>
+        <li style="margin-left:auto;"><a href="{{ url_for('main.logout') }}">🚪 Sair</a></li>
       </ul>
     </nav>
   </header>
