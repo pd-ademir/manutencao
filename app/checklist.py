@@ -5,6 +5,7 @@ from sqlalchemy.sql import text
 from collections import namedtuple
 from app.models import registrar_log
 from flask_login import current_user
+from flask_login import login_required, current_user
 
 
 
@@ -186,6 +187,7 @@ def gerenciar_checklists():
 
 
 @checklist_bp.route("/placa/<placa>", methods=["GET", "POST"])
+@login_required
 def por_placa(placa):
     if request.method == "POST":
         with engine_checklist.begin() as conn:
