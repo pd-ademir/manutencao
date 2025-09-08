@@ -7,21 +7,20 @@
             <th>Placa</th>
             <th>Unidade</th>
             <th>Motorista</th>
-            <th>Tipo de Manutenção</th>
-            <th class="text-right">Km Restante</th>
+            <th>Manutenções Próximas</th>
+            <th class="text-right">KM Atual</th>
         </tr>
     </thead>
     <tbody>
         {% for v in data %}
-            {% for tipo, km in v.manutencoes_a_vencer %}
             <tr>
                 <td>{{ v.placa }}</td>
                 <td>{{ v.unidade }}</td>
                 <td>{{ v.motorista or 'N/A' }}</td>
-                <td>{{ tipo }}</td>
-                <td class="text-right">{{ km }} km</td>
+                {# Usamos a propriedade temporária que foi criada na rota #}
+                <td>{{ v.manutencoes_pendentes_texto | join('<br>') | safe }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(v.km_atual).replace(",", ".") }} km</td>
             </tr>
-            {% endfor %}
         {% else %}
             <tr><td colspan="5" class="text-center">Nenhum veículo com manutenções a vencer.</td></tr>
         {% endfor %}

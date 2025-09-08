@@ -13,7 +13,8 @@
         <option value="" disabled selected>Escolha uma opção</option>
         <option value="a_vencer">🚧 Veículos com Manutenções a Vencer</option>
         <option value="realizadas">🛠️ Manutenções Realizadas</option>
-        <option value="bloqueados">🚫 Veículos Bloqueados por Manutenção Vencida</option>
+        <option value="bloqueados">🚫 Veículos Atualmente Bloqueados</option>
+        <option value="historico_bloqueios">📖 Histórico Completo de Bloqueios</option>
       </select>
     </div>
     <button type="submit" class="btn btn-danger" style="margin-top: 15px;">
@@ -21,14 +22,4 @@
     </button>
   </form>
 </div>
-
-<style>
-  .relatorio-opcoes {
-    max-width: 500px;
-    margin-top: 30px;
-  }
-  .form-group {
-    margin-bottom: 15px;
-  }
-</style>
 {% endblock %}

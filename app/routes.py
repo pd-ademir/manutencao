@@ -59,10 +59,12 @@ def requer_tipo(*tipos_autorizados):
 @main.route('/')
 @login_required
 def index():
-    print(f"Usuário autenticado? {current_user.is_authenticated}")
     hoje = date.today()
     todos = Veiculo.query.order_by(Veiculo.placa).all()
     filtro = request.args.get('filtro')
+
+    for v_check in todos:
+        verificar_e_registrar_bloqueio(v_check)
 
     def manutencao_relevante(v):
         return any([
@@ -74,16 +76,11 @@ def index():
     
     def manutencao_vencida(v):
         tipos = []
-        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0:
-            tipos.append("Preventiva")
-        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0:
-            tipos.append("Intermediária")
-        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0:
-            tipos.append("Diferencial")
-        if v.km_para_cambio is not None and v.km_para_cambio <= 0:
-            tipos.append("Câmbio")
+        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0: tipos.append("Preventiva")
+        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0: tipos.append("Intermediária")
+        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0: tipos.append("Diferencial")
+        if v.km_para_cambio is not None and v.km_para_cambio <= 0: tipos.append("Câmbio")
         return tipos
-
 
     veiculos = []
     for v in todos:
@@ -92,18 +89,14 @@ def index():
         outras_manutencoes = manutencao_relevante(v)
         v.manutencoes_vencidas = manutencao_vencida(v)
 
-
         if filtro == 'ocultar_somente_calibragem':
-            # Exibe apenas se tiver outras manutenções ou revisão de carreta
             if outras_manutencoes or revisao_carreta_vencida:
                 veiculos.append(v)
         else:
-            # Exibe todos com qualquer manutenção relevante
             if outras_manutencoes or calibragem_vencida or revisao_carreta_vencida:
                 veiculos.append(v)
 
     return render_template('index.html', veiculos=veiculos, current_date=hoje)
-
 
 
 
@@ -266,11 +259,14 @@ def editar_veiculo(id):
     import sys
 import traceback
 
+# Em app/routes.py, substitua a função inteira por esta
+
 @main.route('/realizar-manutencao', methods=['GET', 'POST'])
 @login_required
 @requer_tipo("master", "comum", "teste", "visualizador")
 def realizar_manutencao():
     form = ManutencaoForm()
+    # ... (código inicial da função, sem alterações)
     veiculos = Veiculo.query.order_by(Veiculo.placa).all()
     form.veiculo_id.choices = [(v.id, v.placa) for v in veiculos]
 
@@ -279,8 +275,9 @@ def realizar_manutencao():
         veiculo_pre_selecionado = next((v for v in veiculos if v.placa == placa_parametro), None)
         if veiculo_pre_selecionado:
             form.veiculo_id.data = veiculo_pre_selecionado.id
-
+            
     if form.validate_on_submit():
+        # ... (validações de permissão e veículo, sem alterações)
         if not tem_permissao(current_user.tipo, "alterar_dados"):
             flash("Você não tem permissão para registrar manutenções.", "warning")
             return redirect(url_for('main.realizar_manutencao'))
@@ -291,10 +288,10 @@ def realizar_manutencao():
             return redirect(url_for('main.realizar_manutencao'))
 
         tipo = form.tipo.data.upper()
+        # ... (lógica de atualização do veículo, sem alterações)
         km_realizado = form.km_realizado.data or 0
         data_manutencao = form.data.data
         data_proxima = None
-
         if tipo == 'CARRETA':
             if km_realizado == 0:
                 data_base = veiculo.data_proxima_revisao_carreta or data_manutencao
@@ -304,7 +301,6 @@ def realizar_manutencao():
             else:
                 veiculo.km_ultima_revisao_carreta = km_realizado
             veiculo.data_ultima_revisao_carreta = data_manutencao
-
         else:
             if km_realizado == 0:
                 flash("Informe o KM atual para este tipo de manutenção.", "danger")
@@ -326,37 +322,55 @@ def realizar_manutencao():
                 veiculo.data_troca_oleo_cambio = data_manutencao
 
         manut = Manutencao(
-            veiculo_id=veiculo.id,
-            motorista=veiculo.motorista,
-            placa=veiculo.placa,
-            modelo=veiculo.modelo,
-            fabricante=veiculo.fabricante,
-            km_atual=km_realizado if km_realizado else None,
-            km_troca=km_realizado if km_realizado else None,
-            data_troca=data_manutencao,
-            data_proxima=data_proxima,
-            observacoes=form.observacoes.data.upper() if form.observacoes.data else None,
-            tipo=tipo
+            veiculo_id=veiculo.id, motorista=veiculo.motorista, placa=veiculo.placa,
+            modelo=veiculo.modelo, fabricante=veiculo.fabricante,
+            km_atual=km_realizado if km_realizado else None, km_troca=km_realizado if km_realizado else None,
+            data_troca=data_manutencao, data_proxima=data_proxima,
+            observacoes=form.observacoes.data.upper() if form.observacoes.data else None, tipo=tipo
         )
-
         db.session.add(manut)
         db.session.add(veiculo)
+
         try:
             db.session.commit()
             flash(f'{tipo.title()} registrada com sucesso para {veiculo.placa}!', 'success')
+            registrar_log(current_user, f"Registrou manutenção {tipo} no veículo {veiculo.placa} na KM {km_realizado}")
+
+            # --- LÓGICA DE LIBERAÇÃO ATUALIZADA ---
+            if tipo == 'PREVENTIVA':
+                # Se for Preventiva, libera tanto o bloqueio de Preventiva quanto de Intermediária
+                tipos_a_liberar = ['Preventiva', 'Intermediária']
+            else:
+                # Para outros tipos, libera apenas o bloqueio correspondente
+                TIPO_MAP = {'INTERMEDIARIA': 'Intermediária', 'DIFERENCIAL': 'Diferencial', 'CAMBIO': 'Câmbio'}
+                tipo_para_busca = TIPO_MAP.get(tipo)
+                tipos_a_liberar = [tipo_para_busca] if tipo_para_busca else []
+
+            # Busca e libera todos os bloqueios pendentes para os tipos definidos
+            bloqueios_pendentes = HistoricoBloqueio.query.filter(
+                HistoricoBloqueio.veiculo_id == veiculo.id,
+                HistoricoBloqueio.tipo_manutencao.in_(tipos_a_liberar),
+                HistoricoBloqueio.liberado == False
+            ).all()
+
+            for bloqueio in bloqueios_pendentes:
+                bloqueio.liberado = True
+                bloqueio.data_liberacao = datetime.utcnow()
+                bloqueio.manutencao_id = manut.id
+                print(f"BLOQUEIO LIBERADO: Veículo {veiculo.placa}, Tipo: {bloqueio.tipo_manutencao}")
+
+            if bloqueios_pendentes:
+                db.session.commit()
+
         except Exception as e:
             db.session.rollback()
-            print("Erro ao registrar manutenção:", e, file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)  # importante direcionar para stderr
-            flash('Erro ao registrar manutenção.', 'danger')
-            return redirect(url_for('main.realizar_manutencao'))
-
-        registrar_log(current_user, f"Registrou manutenção {tipo} no veículo {veiculo.placa} na KM {km_realizado}")
+            print("Erro ao registrar manutenção ou liberar bloqueio:", e, file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            flash('Erro ao registrar a manutenção.', 'danger')
+        
         return redirect(url_for('main.lista_placas'))
 
     return render_template('realizar_manutencao.html', form=form)
-
-
 
 
 @main.route('/excluir-veiculo/<int:id>')
@@ -860,8 +874,7 @@ def get_image_file_as_base64_data(file_path):
     """Lê um arquivo de imagem e o converte para uma string data URI em Base64."""
     try:
         with open(file_path, "rb") as image_file:
-            # Identifica o tipo de imagem para o cabeçalho correto
-            image_type = 'jpeg' if file_path.lower().endswith('.jpg') else 'png'
+            image_type = 'jpeg' if file_path.lower().endswith(('.jpg', '.jpeg')) else 'png'
             encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
         return f"data:image/{image_type};base64,{encoded_string}"
     except (IOError, FileNotFoundError):
@@ -869,17 +882,17 @@ def get_image_file_as_base64_data(file_path):
         return ""
 
 
+# Em app/routes.py, substitua a função antiga por esta
+
 @main.route('/relatorios/pdf')
 @login_required
 def baixar_relatorio_pdf():
-    """
-    Gera e baixa um relatório em PDF com base no tipo solicitado.
-    """
+    """Gera e baixa um relatório em PDF com base no tipo solicitado."""
     tipo = request.args.get('tipo')
     if not tipo:
         flash('É necessário especificar um tipo de relatório.', 'warning')
-        return redirect(url_for('main.relatorios')) # Certifique-se que 'main.relatorios' está correto
-        
+        return redirect(url_for('main.relatorios'))
+
     company_data = {
         "name": "TRANSP TRANSPORTES DE PETRÓLEO LTDA",
         "address": "RODOVIA AVENIDA PIL PEREIRA TIM, Nº-910A, EMAUS, - PARNAMIRIM, RN, CEP: 59149-090",
@@ -887,62 +900,71 @@ def baixar_relatorio_pdf():
         "phone": "(84) 9 9612-9655"
     }
 
-    todos_veiculos = Veiculo.query.order_by(Veiculo.placa).all()
     dados = []
     template_path = ""
     titulo_pdf = ""
 
-    # --- LÓGICA DE DADOS RESTAURADA ---
-    def get_manutencoes_a_vencer(v):
-        tipos = []
-        if v.km_para_preventiva is not None and v.km_para_preventiva <= 5000: tipos.append(("Preventiva", v.km_para_preventiva))
-        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 5000: tipos.append(("Intermediária", v.km_para_intermediaria))
-        if v.km_para_diferencial is not None and v.km_para_diferencial <= 5000: tipos.append(("Diferencial", v.km_para_diferencial))
-        if v.km_para_cambio is not None and v.km_para_cambio <= 5000: tipos.append(("Câmbio", v.km_para_cambio))
-        return tipos
-
-    def get_manutencoes_vencidas(v):
-        tipos = []
-        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0: tipos.append("Preventiva")
-        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0: tipos.append("Intermediária")
-        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0: tipos.append("Diferencial")
-        if v.km_para_cambio is not None and v.km_para_cambio <= 0: tipos.append("Câmbio")
-        return tipos
-
+    # --- LÓGICA DO FILTRO 'A VENCER' ADICIONADA AQUI ---
     if tipo == 'a_vencer':
         template_path = 'report_a_vencer.html'
         titulo_pdf = 'Relatório de Manutenções a Vencer'
+        
+        todos_veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+        veiculos_a_vencer = []
+        
         for v in todos_veiculos:
-            manutencoes = get_manutencoes_a_vencer(v)
-            if manutencoes: v.manutencoes_a_vencer = manutencoes; dados.append(v)
+            manutencoes = []
+            # Verifica KMs próximos (entre 1 e 5000 km)
+            if v.km_para_preventiva and 0 < v.km_para_preventiva <= 5000:
+                manutencoes.append(f"Preventiva em {v.km_para_preventiva} km")
+            if v.km_para_intermediaria and 0 < v.km_para_intermediaria <= 5000:
+                manutencoes.append(f"Intermediária em {v.km_para_intermediaria} km")
+            if v.km_para_diferencial and 0 < v.km_para_diferencial <= 5000:
+                manutencoes.append(f"Diferencial em {v.km_para_diferencial} km")
+            if v.km_para_cambio and 0 < v.km_para_cambio <= 5000:
+                manutencoes.append(f"Câmbio em {v.km_para_cambio} km")
+            
+            # Verifica data da carreta (próximos 30 dias)
+            if v.data_proxima_revisao_carreta and date.today() < v.data_proxima_revisao_carreta <= date.today() + timedelta(days=30):
+                manutencoes.append(f"Carreta em {v.data_proxima_revisao_carreta.strftime('%d/%m/%Y')}")
+
+            if manutencoes:
+                v.manutencoes_pendentes_texto = manutencoes # Propriedade temporária para o template
+                veiculos_a_vencer.append(v)
+                
+        dados = veiculos_a_vencer
+
+    elif tipo == 'bloqueados':
+        template_path = 'report_bloqueados.html'
+        titulo_pdf = 'Relatório de Veículos Bloqueados'
+        dados = HistoricoBloqueio.query.filter_by(liberado=False).order_by(HistoricoBloqueio.data_bloqueio).all()
+
+    elif tipo == 'historico_bloqueios':
+        template_path = 'report_historico_bloqueios.html'
+        titulo_pdf = 'Histórico Completo de Bloqueios'
+        dados = HistoricoBloqueio.query.order_by(HistoricoBloqueio.id.desc()).all()
+
     elif tipo == 'realizadas':
         template_path = 'report_realizadas.html'
         titulo_pdf = 'Relatório de Manutenções Realizadas'
         dados = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
-    elif tipo == 'bloqueados':
-        template_path = 'report_bloqueados.html'
-        titulo_pdf = 'Relatório de Veículos Bloqueados'
-        for v in todos_veiculos:
-            vencidas = get_manutencoes_vencidas(v)
-            if vencidas: v.manutencoes_vencidas = vencidas; dados.append(v)
+    
     else:
-        flash('Tipo de relatório desconhecido.', 'danger')
+        flash(f'Tipo de relatório "{tipo}" desconhecido.', 'danger')
         return redirect(url_for('main.relatorios'))
 
-    # --- LÓGICA DO LOGO BASE64 (CORRETA) ---
-    logo_file_path = os.path.join(os.path.dirname(__file__), 'static', 'logo.jpg') # Sem a pasta 'images'
+    if not dados:
+        flash(f'Nenhum dado encontrado para o relatório de "{titulo_pdf}".', 'info')
+        return redirect(url_for('main.relatorios'))
+
+    logo_file_path = os.path.join(os.path.dirname(__file__), 'static', 'logo.jpg')
     logo_data_uri = get_image_file_as_base64_data(logo_file_path)
 
     html = render_template(
-        template_path,
-        data=dados,
-        title=titulo_pdf,
-        logo_path=logo_data_uri,
+        template_path, data=dados, title=titulo_pdf, logo_path=logo_data_uri,
         generation_date=date.today().strftime('%d/%m/%Y'),
-        company_name=company_data["name"],
-        company_address=company_data["address"],
-        company_cnpj=company_data["cnpj"],
-        company_phone=company_data["phone"]
+        company_name=company_data["name"], company_address=company_data["address"],
+        company_cnpj=company_data["cnpj"], company_phone=company_data["phone"]
     )
 
     pdf_stream = BytesIO()
@@ -961,7 +983,44 @@ def baixar_relatorio_pdf():
 
 
 
+
 @main.route('/relatorios')
 @login_required
 def relatorios():
     return render_template('relatorios.html')
+
+# Em app/routes.py, adicione esta função
+
+from .models import HistoricoBloqueio, Veiculo, Manutencao # Garanta que HistoricoBloqueio está no import
+from . import db # Precisamos do 'db' para salvar no banco
+
+# ... (suas outras funções e a função da imagem) ...
+
+def verificar_e_registrar_bloqueio(veiculo):
+    """Verifica manutenções vencidas e cria um registro no histórico se for um novo bloqueio."""
+    def get_manutencoes_vencidas(v):
+        tipos = []
+        if v.km_para_preventiva is not None and v.km_para_preventiva <= 0: tipos.append("Preventiva")
+        if v.km_para_intermediaria is not None and v.km_para_intermediaria <= 0: tipos.append("Intermediária")
+        if v.km_para_diferencial is not None and v.km_para_diferencial <= 0: tipos.append("Diferencial")
+        if v.km_para_cambio is not None and v.km_para_cambio <= 0: tipos.append("Câmbio")
+        return tipos
+
+    manutencoes_vencidas = get_manutencoes_vencidas(veiculo)
+    
+    for tipo_vencido in manutencoes_vencidas:
+        bloqueio_existente = HistoricoBloqueio.query.filter_by(
+            veiculo_id=veiculo.id, tipo_manutencao=tipo_vencido, liberado=False
+        ).first()
+        
+        if not bloqueio_existente:
+            novo_bloqueio = HistoricoBloqueio(
+                veiculo_id=veiculo.id,
+                tipo_manutencao=tipo_vencido,
+                km_bloqueio=veiculo.km_atual,
+                data_bloqueio=datetime.utcnow()
+            )
+            db.session.add(novo_bloqueio)
+            print(f"NOVO BLOQUEIO REGISTRADO: Veículo {veiculo.placa}, Tipo: {tipo_vencido}")
+            
+    db.session.commit()

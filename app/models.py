@@ -8,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 
 
+
 class Manutencao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     veiculo_id = db.Column(db.Integer, db.ForeignKey('veiculo.id'), nullable=False)
@@ -190,3 +191,30 @@ class EstoquePneu(db.Model):
     def __repr__(self):
         return f"<EstoquePneu {self.numero_fogo}>"
 
+
+
+# relatório de bloqueios e liberações de veículos
+
+class HistoricoBloqueio(db.Model):
+    __tablename__ = 'historico_bloqueio'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    # CORREÇÃO: de 'veiculos.id' para 'veiculo.id'
+    veiculo_id = db.Column(db.Integer, db.ForeignKey('veiculo.id'), nullable=False)
+    
+    # Detalhes do bloqueio
+    tipo_manutencao = db.Column(db.String(100), nullable=False)
+    data_bloqueio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    km_bloqueio = db.Column(db.Integer, nullable=False)
+    
+    # Detalhes da liberação
+    liberado = db.Column(db.Boolean, default=False)
+    data_liberacao = db.Column(db.DateTime, nullable=True)
+    # CORREÇÃO: de 'manutencoes.id' para 'manutencao.id'
+    manutencao_id = db.Column(db.Integer, db.ForeignKey('manutencao.id'), nullable=True) # Link para a manutenção que liberou
+
+    veiculo = db.relationship('Veiculo', backref=db.backref('historico_bloqueios', lazy=True))
+
+    def __repr__(self):
+        status = "Liberado" if self.liberado else "Pendente"
+        return f'<Bloqueio {self.id} - Veículo {self.veiculo.placa} ({status})>'
