@@ -60,7 +60,9 @@ def requer_tipo(*tipos_autorizados):
 @login_required
 def index():
     hoje = date.today()
-    todos = Veiculo.query.order_by(Veiculo.placa).all()
+   #todos = Veiculo.query.order_by(Veiculo.placa).all()
+    todos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.placa).all() # exclui SMART da lista
+
     filtro = request.args.get('filtro')
 
     for v_check in todos:
@@ -391,7 +393,9 @@ def excluir_veiculo(id):
 @login_required
 @requer_tipo("master", "comum","teste")
 def lista_placas():
-    veiculos = Veiculo.query.order_by(Veiculo.unidade, Veiculo.placa).all()
+    #veiculos = Veiculo.query.order_by(Veiculo.unidade, Veiculo.placa).all()
+    veiculos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.unidade, Veiculo.placa).all() # exclui SMART da lista
+
     unidades = defaultdict(list)
     for v in veiculos:
         unidades[v.unidade.upper()].append(v)
@@ -909,7 +913,9 @@ def baixar_relatorio_pdf():
         template_path = 'report_a_vencer.html'
         titulo_pdf = 'Relatório de Manutenções a Vencer'
         
-        todos_veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+       # todos_veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+        todos_veiculos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.placa).all()# exclui SMART da lista
+
         veiculos_a_vencer = []
         
         for v in todos_veiculos:
@@ -937,17 +943,27 @@ def baixar_relatorio_pdf():
     elif tipo == 'bloqueados':
         template_path = 'report_bloqueados.html'
         titulo_pdf = 'Relatório de Veículos Bloqueados'
-        dados = HistoricoBloqueio.query.filter_by(liberado=False).order_by(HistoricoBloqueio.data_bloqueio).all()
+        #dados = HistoricoBloqueio.query.filter_by(liberado=False).order_by(HistoricoBloqueio.data_bloqueio).all()
+        dados = HistoricoBloqueio.query.join(Veiculo).filter(
+        Veiculo.unidade != 'SMART', 
+        HistoricoBloqueio.liberado == False).order_by(HistoricoBloqueio.data_bloqueio).all()# exclui SMART da lista
+
 
     elif tipo == 'historico_bloqueios':
         template_path = 'report_historico_bloqueios.html'
         titulo_pdf = 'Histórico Completo de Bloqueios'
-        dados = HistoricoBloqueio.query.order_by(HistoricoBloqueio.id.desc()).all()
+        #dados = HistoricoBloqueio.query.order_by(HistoricoBloqueio.id.desc()).all()
+        dados = HistoricoBloqueio.query.join(Veiculo).filter(
+        Veiculo.unidade != 'SMART').order_by(HistoricoBloqueio.id.desc()).all()# exclui SMART da lista
+
 
     elif tipo == 'realizadas':
         template_path = 'report_realizadas.html'
         titulo_pdf = 'Relatório de Manutenções Realizadas'
-        dados = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
+        #dados = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
+        dados = Manutencao.query.join(Veiculo).filter(
+        Veiculo.unidade != 'SMART').order_by(Manutencao.data_troca.desc()).all()# exclui SMART da lista
+
     
     else:
         flash(f'Tipo de relatório "{tipo}" desconhecido.', 'danger')
