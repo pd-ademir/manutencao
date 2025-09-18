@@ -36,7 +36,7 @@
             <th>Próx. Intermediária</th>
             <th>Próx. Diferencial</th>
             <th>Próx. Câmbio</th>
-            <th>Próx. Calibragem</th>
+           <!-- <th>Próx. Calibragem</th>-->
             <th>Ações</th>
           </tr>
         </thead>
@@ -116,7 +116,7 @@
           {% else %}-{% endif %}
         </td>
 
-        <td>
+       <!-- <td>
           {% if v.data_proxima_calibragem %}
             {% if v.data_proxima_calibragem <= current_date %}
               <span class="vencida">VENCIDA ({{ v.data_proxima_calibragem.strftime('%d/%m/%Y') }})</span>
@@ -125,7 +125,7 @@
             {% endif %}
           {% else %}-{% endif %}
         </td>
-
+-->
         <td>
           {% if tem_permissao(current_user.tipo, 'alterar_dados') %}
             <a href="{{ url_for('main.cadastro_veiculo', id=v.id) }}" class="btn-azul" title="Editar">✏️</a>
