@@ -21,129 +21,139 @@
  
     <div class="unidade">
       <h2>Unidade: {{ unidade }}</h2>
-      <table class="tabela-index">
-        <thead>
-          <tr>
-            <th>Motorista</th>
-            <th>Placa Cavalo</th>
-            <th>Engate 1</th>
-            <th>Engate 2</th>
-            <th>Modelo</th>
-            <th>Fabricante</th>
-            <th>Ano</th>
-            <th>KM Atual</th>
-            <th>Próx. Preventiva</th>
-            <th>Próx. Intermediária</th>
-            <th>Próx. Diferencial</th>
-            <th>Próx. Câmbio</th>
-           <!-- <th>Próx. Calibragem</th>-->
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-    {% for v in veiculos %}
-      {% set vencido = (
-        (v.km_para_preventiva is not none and v.km_para_preventiva < 0) or
-        (v.km_para_intermediaria is not none and v.km_para_intermediaria < 0) or
-        (v.km_para_diferencial is not none and v.km_para_diferencial < 0) or
-        (v.km_para_cambio is not none and v.km_para_cambio < 0) or
-        (v.data_proxima_calibragem and v.data_proxima_calibragem <= current_date)
-      ) %}
-      <tr class="{{ 'alerta' if vencido else '' }}">
-        <td>{{ v.motorista }}</td>
-        <td>
-          <a href="{{ url_for('checklist.por_placa', placa=v.placa) }}"
-            class="text-decoration-none link-primary">
-            {{ v.placa }}
-          </a>
-        </td>
-        <td>{{ v.placa_1 or '-' }}</td>
-        <td>{{ v.placa_2 or '-' }}</td>
-        <td>{{ v.modelo }}</td>
-        <td>{{ v.fabricante }}</td>
-        <td>{{ v.ano }}</td>
+      
+      <!-- INÍCIO DA CORREÇÃO 1: Adicionado container para rolagem horizontal -->
+      <div class="tabela-scroll">
+        <table class="tabela-index">
+          <thead>
+            <tr>
+              <th>Motorista</th>
+              <th>Placa Cavalo</th>
+              <th>Engate 1</th>
+              <th>Engate 2</th>
+              <th>Modelo</th>
+              <th>Fabricante</th>
+              <th>Ano</th>
+              <th>KM Atual</th>
+              <th>Próx. Preventiva</th>
+              <th>Próx. Intermediária</th>
+              <th>Próx. Diferencial</th>
+              <th>Próx. Câmbio</th>
+             <!-- <th>Próx. Calibragem</th>-->
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+      {% for v in veiculos %}
+        {% set vencido = (
+          (v.km_para_preventiva is not none and v.km_para_preventiva < 0) or
+          (v.km_para_intermediaria is not none and v.km_para_intermediaria < 0) or
+          (v.km_para_diferencial is not none and v.km_para_diferencial < 0) or
+          (v.km_para_cambio is not none and v.km_para_cambio < 0) or
+          (v.data_proxima_calibragem and v.data_proxima_calibragem <= current_date)
+        ) %}
+        <tr class="{{ 'alerta' if vencido else '' }}">
+          <td>{{ v.motorista }}</td>
+          <td>
+            <a href="{{ url_for('checklist.por_placa', placa=v.placa) }}"
+              class="text-decoration-none link-primary">
+              {{ v.placa }}
+            </a>
+          </td>
+          <td>{{ v.placa_1 or '-' }}</td>
+          <td>{{ v.placa_2 or '-' }}</td>
+          <td>{{ v.modelo }}</td>
+          <td>{{ v.fabricante }}</td>
+          <td>{{ v.ano }}</td>
 
-        <td>
-            {% if tem_permissao(current_user.tipo, 'editar_km') %}
-            <form action="{{ url_for('main.atualizar_km', id=v.id) }}" method="POST" style="display: flex; gap: 6px;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">  {# 👈 token CSRF correto #}
-              <input type="number" name="km_atual" value="{{ v.km_atual }}" class="form-control" style="max-width: 170px;" required>
-              <button type="submit" title="Atualizar KM" style="background: #28a745; border: none; color: white; padding: 3px 8px; border-radius: 4px;">✔️</button>
-            </form>
-            {% else %}
-              <span class="text-muted">{{ v.km_atual | format_km }}</span>
-            {% endif %}
+          <td>
+              {% if tem_permissao(current_user.tipo, 'editar_km') %}
+              <form action="{{ url_for('main.atualizar_km', id=v.id) }}" method="POST" style="display: flex; gap: 6px; align-items: center;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <!-- INÍCIO DA CORREÇÃO 2: 'max-width' alterado para 'min-width' para garantir um tamanho mínimo usável -->
+                <input type="number" name="km_atual" value="{{ v.km_atual }}" class="form-control" style="min-width: 120px;" required>
+                <!-- FIM DA CORREÇÃO 2 -->
+
+                <button type="submit" title="Atualizar KM" style="background: #28a745; border: none; color: white; padding: 3px 8px; border-radius: 4px;">✔️</button>
+              </form>
+              {% else %}
+                <span class="text-muted">{{ v.km_atual | format_km }}</span>
+              {% endif %}
+            </td>
+
+          <td>
+            {% if v.km_para_preventiva is not none %}
+              {% if v.km_para_preventiva < 0 %}
+                <span class="vencida">VENCIDA ({{ v.km_para_preventiva | format_km }})</span>
+              {% else %}
+                {{ v.km_para_preventiva | format_km }}
+              {% endif %}
+            {% else %}-{% endif %}
           </td>
 
+          <td>
+            {% if v.km_para_intermediaria is not none %}
+              {% if v.km_para_intermediaria < 0 %}
+                <span class="vencida">VENCIDA ({{ v.km_para_intermediaria | format_km }})</span>
+              {% else %}
+                {{ v.km_para_intermediaria | format_km }}
+              {% endif %}
+            {% else %}-{% endif %}
+          </td>
 
-        <td>
-          {% if v.km_para_preventiva is not none %}
-            {% if v.km_para_preventiva < 0 %}
-              <span class="vencida">VENCIDA ({{ v.km_para_preventiva | format_km }})</span>
-            {% else %}
-              {{ v.km_para_preventiva | format_km }}
-            {% endif %}
-          {% else %}-{% endif %}
-        </td>
+          <td>
+            {% if v.km_para_diferencial is not none %}
+              {% if v.km_para_diferencial < 0 %}
+                <span class="vencida">VENCIDA ({{ v.km_para_diferencial | format_km }})</span>
+              {% else %}
+                {{ v.km_para_diferencial | format_km }}
+              {% endif %}
+            {% else %}-{% endif %}
+          </td>
 
-        <td>
-          {% if v.km_para_intermediaria is not none %}
-            {% if v.km_para_intermediaria < 0 %}
-              <span class="vencida">VENCIDA ({{ v.km_para_intermediaria | format_km }})</span>
-            {% else %}
-              {{ v.km_para_intermediaria | format_km }}
-            {% endif %}
-          {% else %}-{% endif %}
-        </td>
+          <td>
+            {% if v.km_para_cambio is not none %}
+              {% if v.km_para_cambio < 0 %}
+                <span class="vencida">VENCIDA ({{ v.km_para_cambio | format_km }})</span>
+              {% else %}
+                {{ v.km_para_cambio | format_km }}
+              {% endif %}
+            {% else %}-{% endif %}
+          </td>
 
-        <td>
-          {% if v.km_para_diferencial is not none %}
-            {% if v.km_para_diferencial < 0 %}
-              <span class="vencida">VENCIDA ({{ v.km_para_diferencial | format_km }})</span>
-            {% else %}
-              {{ v.km_para_diferencial | format_km }}
-            {% endif %}
-          {% else %}-{% endif %}
-        </td>
+         <!-- Ocultado
+         <td> ... </td> 
+         -->
 
-        <td>
-          {% if v.km_para_cambio is not none %}
-            {% if v.km_para_cambio < 0 %}
-              <span class="vencida">VENCIDA ({{ v.km_para_cambio | format_km }})</span>
+          <td>
+            {% if tem_permissao(current_user.tipo, 'alterar_dados') %}
+              <a href="{{ url_for('main.cadastro_veiculo', id=v.id) }}" class="btn-azul" title="Editar">✏️</a>
+              {% if current_user.tipo == 'master' %}
+              <a href="{{ url_for('main.excluir_veiculo', id=v.id) }}" class="btn-vermelho" title="Excluir" onclick="return confirm('Deseja excluir {{ v.placa }}?')">🗑️</a>
+              {% endif %}
             {% else %}
-              {{ v.km_para_cambio | format_km }}
+              <span class="text-muted">Somente leitura</span>
             {% endif %}
-          {% else %}-{% endif %}
-        </td>
-
-       <!-- <td>
-          {% if v.data_proxima_calibragem %}
-            {% if v.data_proxima_calibragem <= current_date %}
-              <span class="vencida">VENCIDA ({{ v.data_proxima_calibragem.strftime('%d/%m/%Y') }})</span>
-            {% else %}
-              {{ v.data_proxima_calibragem.strftime('%d/%m/%Y') }}
-            {% endif %}
-          {% else %}-{% endif %}
-        </td>
--->
-        <td>
-          {% if tem_permissao(current_user.tipo, 'alterar_dados') %}
-            <a href="{{ url_for('main.cadastro_veiculo', id=v.id) }}" class="btn-azul" title="Editar">✏️</a>
-            {% if current_user.tipo == 'master' %}
-            <a href="{{ url_for('main.excluir_veiculo', id=v.id) }}" class="btn-vermelho" title="Excluir" onclick="return confirm('Deseja excluir {{ v.placa }}?')">🗑️</a>
-            {% endif %}
-          {% else %}
-            <span class="text-muted">Somente leitura</span>
-          {% endif %}
-        </td>
-      </tr>
-    
-  {% endfor %}
-</tbody>
-    </table>
+          </td>
+        </tr>
+      
+    {% endfor %}
+  </tbody>
+      </table>
+    </div> <!-- FIM DA CORREÇÃO 1: Fim do container de rolagem -->
   </div>
  
   {% endfor %}
 
 </div>
+
+<!-- INÍCIO DA CORREÇÃO 3: Estilo para a tabela rolar horizontalmente -->
+<style>
+  .tabela-scroll {
+    overflow-x: auto;
+  }
+</style>
+<!-- FIM DA CORREÇÃO 3 -->
+
 {% endblock %}
