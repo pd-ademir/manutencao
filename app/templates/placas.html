@@ -126,7 +126,7 @@
             {% if v.data_proxima_calibragem %}
               {% if v.data_proxima_calibragem <= current_date %}
                 <span class="vencida">VENCIDA ({{ v.data_proxima_calibragem.strftime('%d/%m/%Y') }})</span>
-              <h2>Unidade: {{ unidade }}</h2>
+              <!--<h2>Unidade: {{ unidade }}</h2> -->
               {% endif %}
             {% else %}-{% endif %}
           </td>
