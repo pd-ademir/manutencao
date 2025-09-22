@@ -36,6 +36,8 @@ from flask import (
 )
 from .models import Veiculo, Manutencao
 from flask_login import login_required
+from .models import HistoricoBloqueio, Veiculo, Manutencao # Garanta que HistoricoBloqueio está no import
+from . import db 
 
 
 
@@ -393,8 +395,8 @@ def excluir_veiculo(id):
 @login_required
 @requer_tipo("master", "comum","teste")
 def lista_placas():
-    #veiculos = Veiculo.query.order_by(Veiculo.unidade, Veiculo.placa).all()
-    veiculos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.unidade, Veiculo.placa).all() # exclui SMART da lista
+    veiculos = Veiculo.query.order_by(Veiculo.unidade, Veiculo.placa).all()
+    #veiculos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.unidade, Veiculo.placa).all() # exclui SMART da lista
 
     unidades = defaultdict(list)
     for v in veiculos:
@@ -869,9 +871,6 @@ def detalhes_pneu():
 
 #################################################################
 #RELAORIOS
-# No topo do seu arquivo app/routes.py, adicione esta linha
-# Certifique-se de que estes imports estão no topo do arquivo
-
 
 # Esta função auxiliar lê a imagem e a prepara para o PDF
 def get_image_file_as_base64_data(file_path):
@@ -884,9 +883,6 @@ def get_image_file_as_base64_data(file_path):
     except (IOError, FileNotFoundError):
         print(f"ERRO: A imagem em '{file_path}' não foi encontrada.")
         return ""
-
-
-# Em app/routes.py, substitua a função antiga por esta
 
 @main.route('/relatorios/pdf')
 @login_required
@@ -913,8 +909,8 @@ def baixar_relatorio_pdf():
         template_path = 'report_a_vencer.html'
         titulo_pdf = 'Relatório de Manutenções a Vencer'
         
-       # todos_veiculos = Veiculo.query.order_by(Veiculo.placa).all()
-        todos_veiculos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.placa).all()# exclui SMART da lista
+        todos_veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+        #todos_veiculos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.placa).all()# exclui SMART da lista
 
         veiculos_a_vencer = []
         
@@ -943,26 +939,23 @@ def baixar_relatorio_pdf():
     elif tipo == 'bloqueados':
         template_path = 'report_bloqueados.html'
         titulo_pdf = 'Relatório de Veículos Bloqueados'
-        #dados = HistoricoBloqueio.query.filter_by(liberado=False).order_by(HistoricoBloqueio.data_bloqueio).all()
-        dados = HistoricoBloqueio.query.join(Veiculo).filter(
-        Veiculo.unidade != 'SMART', 
-        HistoricoBloqueio.liberado == False).order_by(HistoricoBloqueio.data_bloqueio).all()# exclui SMART da lista
+        dados = HistoricoBloqueio.query.filter_by(liberado=False).order_by(HistoricoBloqueio.data_bloqueio).all()
+        #dados = HistoricoBloqueio.query.join(Veiculo).filter(
+        #Veiculo.unidade != 'SMART',HistoricoBloqueio.liberado == False).order_by(HistoricoBloqueio.data_bloqueio).all()# exclui SMART da lista
 
 
     elif tipo == 'historico_bloqueios':
         template_path = 'report_historico_bloqueios.html'
         titulo_pdf = 'Histórico Completo de Bloqueios'
-        #dados = HistoricoBloqueio.query.order_by(HistoricoBloqueio.id.desc()).all()
-        dados = HistoricoBloqueio.query.join(Veiculo).filter(
-        Veiculo.unidade != 'SMART').order_by(HistoricoBloqueio.id.desc()).all()# exclui SMART da lista
+        dados = HistoricoBloqueio.query.order_by(HistoricoBloqueio.id.desc()).all()
+        #dados = HistoricoBloqueio.query.join(Veiculo).filter(Veiculo.unidade != 'SMART').order_by(HistoricoBloqueio.id.desc()).all()# exclui SMART da lista
 
 
     elif tipo == 'realizadas':
         template_path = 'report_realizadas.html'
         titulo_pdf = 'Relatório de Manutenções Realizadas'
-        #dados = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
-        dados = Manutencao.query.join(Veiculo).filter(
-        Veiculo.unidade != 'SMART').order_by(Manutencao.data_troca.desc()).all()# exclui SMART da lista
+        dados = Manutencao.query.order_by(Manutencao.data_troca.desc()).all()
+        #dados = Manutencao.query.join(Veiculo).filter(Veiculo.unidade != 'SMART').order_by(Manutencao.data_troca.desc()).all()# exclui SMART da lista
 
     
     else:
@@ -1005,12 +998,8 @@ def baixar_relatorio_pdf():
 def relatorios():
     return render_template('relatorios.html')
 
-# Em app/routes.py, adicione esta função
 
-from .models import HistoricoBloqueio, Veiculo, Manutencao # Garanta que HistoricoBloqueio está no import
-from . import db # Precisamos do 'db' para salvar no banco
 
-# ... (suas outras funções e a função da imagem) ...
 
 def verificar_e_registrar_bloqueio(veiculo):
     """Verifica manutenções vencidas e cria um registro no histórico se for um novo bloqueio."""

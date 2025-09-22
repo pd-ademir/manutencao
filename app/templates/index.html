@@ -3,7 +3,7 @@
 
 {% block conteudo %}
 <h1>Painel de Manutenção</h1>
-<!--
+
 <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 <form method="get" action="{{ url_for('main.index') }}">
   {% if request.args.get('filtro') == 'ocultar_somente_calibragem' %}
@@ -16,7 +16,7 @@
       🚫 Ocultar veículos com apenas calibragem vencida
     </button>
   {% endif %}
-</form> -->
+</form>
 
 {% if current_user.is_authenticated and current_user.tipo.upper() == 'MASTER' %}
   <form action="{{ url_for('main.teste_alerta') }}" method="get">
@@ -84,9 +84,9 @@
           <td class="{% if veiculo.km_para_cambio is not none and veiculo.km_para_cambio <= 5000 %}alerta{% endif %}">
             {{ veiculo.km_para_cambio | format_km if veiculo.km_para_cambio is not none else '-' }}
           </td>
-         <!-- <td class="{% if veiculo.data_proxima_calibragem and veiculo.data_proxima_calibragem <= current_date %}alerta{% endif %}">
+          <td class="{% if veiculo.data_proxima_calibragem and veiculo.data_proxima_calibragem <= current_date %}alerta{% endif %}">
             {{ veiculo.data_proxima_calibragem.strftime('%d/%m/%Y') if veiculo.data_proxima_calibragem else '-' }}
-          </td> -->
+          </td>
           <td>{{ veiculo.unidade }}</td>
           <td>
             {% if current_user.tipo.upper() == 'MASTER' %}

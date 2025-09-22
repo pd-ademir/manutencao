@@ -22,7 +22,7 @@
     <div class="unidade">
       <h2>Unidade: {{ unidade }}</h2>
       
-      <!-- INÍCIO DA CORREÇÃO 1: Adicionado container para rolagem horizontal -->
+      <!-- Adicionado container para rolagem horizontal -->
       <div class="tabela-scroll">
         <table class="tabela-index">
           <thead>
@@ -39,7 +39,7 @@
               <th>Próx. Intermediária</th>
               <th>Próx. Diferencial</th>
               <th>Próx. Câmbio</th>
-             <!-- <th>Próx. Calibragem</th>-->
+              <th>Próx. Calibragem</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -71,9 +71,9 @@
               <form action="{{ url_for('main.atualizar_km', id=v.id) }}" method="POST" style="display: flex; gap: 6px; align-items: center;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
-                <!-- INÍCIO DA CORREÇÃO 2: 'max-width' alterado para 'min-width' para garantir um tamanho mínimo usável -->
+                <!--  'max-width' alterado para 'min-width' para garantir um tamanho mínimo usável -->
                 <input type="number" name="km_atual" value="{{ v.km_atual }}" class="form-control" style="min-width: 120px;" required>
-                <!-- FIM DA CORREÇÃO 2 -->
+                
 
                 <button type="submit" title="Atualizar KM" style="background: #28a745; border: none; color: white; padding: 3px 8px; border-radius: 4px;">✔️</button>
               </form>
@@ -141,19 +141,19 @@
     {% endfor %}
   </tbody>
       </table>
-    </div> <!-- FIM DA CORREÇÃO 1: Fim do container de rolagem -->
+    </div> 
   </div>
  
   {% endfor %}
 
 </div>
 
-<!-- INÍCIO DA CORREÇÃO 3: Estilo para a tabela rolar horizontalmente -->
+<!-- Estilo para a tabela rolar horizontalmente -->
 <style>
   .tabela-scroll {
     overflow-x: auto;
   }
 </style>
-<!-- FIM DA CORREÇÃO 3 -->
+
 
 {% endblock %}
