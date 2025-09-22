@@ -38,7 +38,7 @@ from .models import Veiculo, Manutencao
 from flask_login import login_required
 from .models import HistoricoBloqueio, Veiculo, Manutencao # Garanta que HistoricoBloqueio está no import
 from . import db 
-
+import traceback
 
 
 main = Blueprint('main', __name__)
@@ -62,8 +62,8 @@ def requer_tipo(*tipos_autorizados):
 @login_required
 def index():
     hoje = date.today()
-   #todos = Veiculo.query.order_by(Veiculo.placa).all()
-    todos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.placa).all() # exclui SMART da lista
+    todos = Veiculo.query.order_by(Veiculo.placa).all()
+    #todos = Veiculo.query.filter(Veiculo.unidade != 'SMART').order_by(Veiculo.placa).all() # exclui SMART da lista
 
     filtro = request.args.get('filtro')
 
@@ -258,12 +258,6 @@ def editar_veiculo(id):
 
     return redirect(url_for('main.lista_placas'))
 
-
-
-    import sys
-import traceback
-
-# Em app/routes.py, substitua a função inteira por esta
 
 @main.route('/realizar-manutencao', methods=['GET', 'POST'])
 @login_required
