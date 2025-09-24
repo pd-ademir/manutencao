@@ -87,16 +87,16 @@
                         <div class="card-texto" style="font-family: monospace; line-height: 1.6;">
                             <strong>- SEGUE PLACAS QUE PRECISAM FAZER MANUTENÇÃO.</strong><br><br>
                             {% if veiculo.km_para_preventiva is not none and 0 < veiculo.km_para_preventiva <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_preventiva | format_km }}KM PARA A PREVENTIVA</strong><br>
+                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_preventiva | format_km }} PARA A PREVENTIVA</strong><br>
                             {% endif %}
                             {% if veiculo.km_para_intermediaria is not none and 0 < veiculo.km_para_intermediaria <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_intermediaria | format_km }}KM PARA A INTERMEDIÁRIA</strong><br>
+                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_intermediaria | format_km }} PARA A INTERMEDIÁRIA</strong><br>
                             {% endif %}
                             {% if veiculo.km_para_diferencial is not none and 0 < veiculo.km_para_diferencial <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_diferencial | format_km }}KM PARA O DIFERENCIAL</strong><br>
+                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_diferencial | format_km }} PARA O DIFERENCIAL</strong><br>
                             {% endif %}
                             {% if veiculo.km_para_cambio is not none and 0 < veiculo.km_para_cambio <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_cambio | format_km }}KM PARA O CÂMBIO</strong><br>
+                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_cambio | format_km }} PARA O CÂMBIO</strong><br>
                             {% endif %}
                         </div>
                         <!-- FIM DA MODIFICAÇÃO -->
