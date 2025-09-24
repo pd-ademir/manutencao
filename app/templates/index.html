@@ -49,7 +49,6 @@
     </thead>
     <tbody>
       {% for veiculo in veiculos %}
-        <!-- Linha do veículo (sem alterações) -->
         <tr data-placa="{{ veiculo.placa }}" class="{% if veiculo.em_manutencao %}linha-manutencao{% endif %}">
             <td>
                 {% if veiculo.data_proxima_revisao_carreta %}{% set dias_para_revisao = (veiculo.data_proxima_revisao_carreta - current_date).days %}{% if dias_para_revisao < 0 %}<span class="badge bg-danger" title="Revisão atrasada em {{ -dias_para_revisao }} dias">🔴</span>{% elif dias_para_revisao <= 30 %}<span class="badge bg-warning text-dark" title="Revisão em {{ dias_para_revisao }} dias">🟡</span>{% endif %}{% endif %}
@@ -83,43 +82,22 @@
             <tr class="linha-alerta-agendamento" id="alerta-agendamento-{{ veiculo.placa }}">
                 <td colspan="13">
                     <div class="card-alerta-agendamento">
-                        <!-- INÍCIO DA MODIFICAÇÃO: Novo formato de texto -->
                         <div class="card-texto" style="font-family: monospace; line-height: 1.6;">
                             <strong>- SEGUE PLACAS QUE PRECISAM FAZER MANUTENÇÃO.</strong><br><br>
-                            {% if veiculo.km_para_preventiva is not none and 0 < veiculo.km_para_preventiva <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_preventiva | format_km }} PARA A PREVENTIVA</strong><br>
-                            {% endif %}
-                            {% if veiculo.km_para_intermediaria is not none and 0 < veiculo.km_para_intermediaria <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_intermediaria | format_km }} PARA A INTERMEDIÁRIA</strong><br>
-                            {% endif %}
-                            {% if veiculo.km_para_diferencial is not none and 0 < veiculo.km_para_diferencial <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_diferencial | format_km }} PARA O DIFERENCIAL</strong><br>
-                            {% endif %}
-                            {% if veiculo.km_para_cambio is not none and 0 < veiculo.km_para_cambio <= 1000 %}
-                                <strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_cambio | format_km }} PARA O CÂMBIO</strong><br>
-                            {% endif %}
+                            {% if veiculo.km_para_preventiva is not none and 0 < veiculo.km_para_preventiva <= 1000 %}<strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_preventiva | format_km }} PARA A PREVENTIVA</strong><br>{% endif %}
+                            {% if veiculo.km_para_intermediaria is not none and 0 < veiculo.km_para_intermediaria <= 1000 %}<strong>{{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_intermediaria | format_km }} PARA A INTERMEDIÁRIA</strong><br>{% endif %}
+                            {% if veiculo.km_para_diferencial is not none and 0 < veiculo.km_para_diferencial <= 1000 %}{<strong>{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_diferencial | format_km }} PARA O DIFERENCIAL</strong><br>{% endif %}
+                            {% if veiculo.km_para_cambio is not none and 0 < veiculo.km_para_cambio <= 1000 %}{<strong>{ veiculo.unidade }} - MOTORISTA, {{ veiculo.motorista or 'N/A' }} – {{ veiculo.placa }}{% if veiculo.placa_1 %}, {{ veiculo.placa_1 }}{% endif %}{% if veiculo.placa_2 %}, {{ veiculo.placa_2 }}{% endif %} – FALTA {{ veiculo.km_para_cambio | format_km }} PARA O CÂMBIO</strong><br>{% endif %}
                         </div>
-                        <!-- FIM DA MODIFICAÇÃO -->
-
                         <div class="card-botoes">
-                            <!-- INÍCIO DA MODIFICAÇÃO: O link agora aponta para a página principal do Gmail -->
-                            <a href="https://mail.google.com/" 
-                               target="_blank" 
-                               rel="noopener noreferrer" 
-                               class="btn-email">
-                                📧 Abrir Gmail
-                            </a>
-                            <!-- FIM DA MODIFICAÇÃO -->
-                            <button onclick="ocultarAlertaAgendamento('{{ veiculo.placa }}')" class="btn-ocultar">
-                                ✕ Ocultar Alerta
-                            </button>
+                            <a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer" class="btn-email">📧 Abrir Gmail</a>
+                            <button onclick="ocultarAlertaAgendamento('{{ veiculo.placa }}')" class="btn-ocultar">✕ Ocultar Alerta</button>
                         </div>
                     </div>
                 </td>
             </tr>
         {% endif %}
 
-        <!-- Linhas de bloqueio e manutenção (sem alterações) -->
         {% if veiculo.manutencoes_vencidas %}<tr class="linha-bloqueio"><td colspan="13"><div class="alerta-bloqueio">🚫 <strong>VEÍCULO BLOQUEADO</strong>: Manutenção vencida — {{ veiculo.manutencoes_vencidas | join(', ') }}.<br>Este veículo <strong>não deve entrar em operação</strong> até que a manutenção seja realizada.</div></td></tr>{% endif %}
         {% if veiculo.em_manutencao %}<tr><td colspan="13" style="position: relative;"><div class="texto-corrente"><img src="/static/guincho.png" alt="Guincho" class="guincho-frontal"><img src="/static/carro-sem-fundo.png" alt="Carro em manutenção" class="guincho-frontal"><span>🚧 VEÍCULO EM MANUTENÇÃO</span></div></td></tr>{% endif %}
       {% else %}
@@ -130,6 +108,30 @@
 </div>
 
 <script>
+// ==================================================================
+// == INÍCIO DA CORREÇÃO: FUNÇÃO RESTAURADA ==
+// ==================================================================
+function alternarManutencao(placa) {
+    const token = document.getElementById("csrf_token").value;
+    fetch(`/manutencao/${placa}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': token
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            location.reload();
+        }
+    });
+}
+// ==================================================================
+// == FIM DA CORREÇÃO ==
+// ==================================================================
+
 document.addEventListener("DOMContentLoaded", function() {
     const alertas = document.querySelectorAll('.linha-alerta-agendamento');
     alertas.forEach(alerta => {
