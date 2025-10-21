@@ -39,6 +39,9 @@ from flask_login import login_required
 from .models import HistoricoBloqueio, Veiculo, Manutencao # Garanta que HistoricoBloqueio está no import
 from . import db 
 import traceback
+import pdfplumber
+import re
+from werkzeug.utils import secure_filename
 
 
 main = Blueprint('main', __name__)
@@ -101,6 +104,102 @@ def index():
                 veiculos.append(v)
 
     return render_template('index.html', veiculos=veiculos, current_date=hoje)
+
+
+
+# No início do arquivo, verifique se 'traceback', 'sys' e 'datetime' (de 'from datetime import datetime') já foram importados.
+# No início do arquivo, verifique se os imports necessários estão lá
+import traceback
+import sys
+from datetime import datetime
+import re
+
+@main.route('/extract_os', methods=['GET', 'POST'])
+@login_required
+def extract_os():
+    if request.method == 'POST':
+        if 'pdf_file' not in request.files:
+            flash('Nenhum arquivo enviado.', 'danger')
+            return redirect(request.url)
+        file = request.files['pdf_file']
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+        
+        if file and file.filename.endswith('.pdf'):
+            try:
+                # --- INÍCIO DA LÓGICA DE EXTRAÇÃO (AGORA COMPLETA) ---
+                with pdfplumber.open(file) as pdf:
+                    full_text = ''
+                    for page in pdf.pages:
+                        full_text += page.extract_text(layout=True) or ""
+                        full_text += '\n'
+
+                placa_match = re.search(r'([A-Z]{3}\d[A-Z\d]\d{2})', full_text)
+                placa = placa_match.group(1).strip() if placa_match else 'Não encontrado'
+
+                km_match = re.search(r'(\d{1,3}(?:\.\d{3})*,\d{3})', full_text)
+                km_final = 0
+                if km_match:
+                    km_raw = km_match.group(1)
+                    km_cleaned = km_raw.split(',')[0].replace('.', '')
+                    if km_cleaned.isdigit():
+                        km_final = int(km_cleaned)
+
+                data_str = 'Não encontrado'
+                header_date_match = re.search(r'FECHAMENTO(?:.|\n)*?(\d{2}/\d{2}/\d{4})', full_text)
+                if header_date_match:
+                    data_str = header_date_match.group(1).strip()
+                else:
+                    all_dates = re.findall(r'(\d{2}/\d{2}/\d{4})', full_text)
+                    if all_dates:
+                        latest_date = max([datetime.strptime(d, '%d/%m/%Y') for d in all_dates])
+                        data_str = latest_date.strftime('%d/%m/%Y')
+                
+                tipo_servico = 'N/A'
+                service_detail_match = re.search(r'PREVENTIVA.*?KM\s*-\s*(COMPLETA|INTERMEDIARIA)', full_text, re.IGNORECASE)
+                if service_detail_match:
+                    keyword = service_detail_match.group(1).upper()
+                    if 'COMPLETA' in keyword:
+                        tipo_servico = 'PREVENTIVA'
+                    elif 'INTERMEDIARIA' in keyword:
+                        tipo_servico = 'INTERMEDIARIA'
+                # --- FIM DA LÓGICA DE EXTRAÇÃO ---
+
+
+                # --- INÍCIO DA LÓGICA DE AUTOMAÇÃO ---
+                if tipo_servico == 'N/A' or data_str == 'Não encontrado' or placa == 'Não encontrado':
+                    flash(f"Dados insuficientes no PDF: Placa='{placa}', Data='{data_str}', Tipo='{tipo_servico}'. Manutenção não registrada.", "danger")
+                    return redirect(url_for('main.extract_os'))
+
+                veiculo = Veiculo.query.filter_by(placa=placa).first()
+                if not veiculo:
+                    flash(f"Veículo com placa {placa} não encontrado no sistema. A manutenção não pode ser registrada.", "warning")
+                    return redirect(url_for('main.extract_os'))
+
+                try:
+                    data_manutencao = datetime.strptime(data_str, '%d/%m/%Y').date()
+                except ValueError:
+                    flash(f"A data '{data_str}' extraída do PDF é inválida.", "danger")
+                    return redirect(url_for('main.extract_os'))
+
+                observacoes_pdf = f"Manutenção via PDF. KM: {km_final}"
+                sucesso, mensagem = _registrar_manutencao_core(veiculo, tipo_servico, km_final, data_manutencao, observacoes_pdf, current_user)
+
+                if sucesso:
+                    flash(mensagem, 'success')
+                else:
+                    flash(mensagem, 'danger')
+                
+                return redirect(url_for('main.lista_placas')) # Redireciona para a lista principal após o sucesso
+
+            except Exception as e:
+                flash(f'Ocorreu um erro crítico durante o processo: {e}', 'danger')
+                traceback.print_exc(file=sys.stderr)
+                return redirect(url_for('main.extract_os'))
+
+    # A página agora serve apenas para fazer o upload
+    return render_template('extract_os.html')
 
 
 
@@ -369,6 +468,80 @@ def realizar_manutencao():
         return redirect(url_for('main.lista_placas'))
 
     return render_template('realizar_manutencao.html', form=form)
+
+
+
+#
+# SUBSTITUA a sua função _registrar_manutencao_core por esta:
+#
+def _registrar_manutencao_core(veiculo, tipo_manutencao, km_manutencao, data_manutencao, observacoes, usuario_log):
+    """
+    Função central para registrar uma manutenção. Contém toda a lógica de negócio.
+    """
+    try:
+        tipo_upper = tipo_manutencao.upper()
+        
+        # --- LÓGICA DE ATUALIZAÇÃO DO KM ATUAL (NOVA) ---
+        # Atualiza o KM principal do veículo se o da manutenção for mais recente.
+        if km_manutencao > (veiculo.km_atual or 0):
+            veiculo.km_atual = km_manutencao
+            # A data de atualização do KM também é registrada para rastreabilidade
+            veiculo.data_ultima_atualizacao_km = datetime.now(pytz.timezone("America/Fortaleza"))
+
+        # --- FIM DA LÓGICA NOVA ---
+
+        # Atualiza os contadores de KM e data específicos da manutenção
+        if tipo_upper == 'PREVENTIVA':
+            veiculo.km_ultima_revisao_preventiva = km_manutencao
+            veiculo.km_ultima_revisao_intermediaria = km_manutencao
+            veiculo.data_ultima_revisao_preventiva = data_manutencao
+            veiculo.data_ultima_revisao_intermediaria = data_manutencao
+        elif tipo_upper == 'INTERMEDIARIA':
+            veiculo.km_ultima_revisao_intermediaria = km_manutencao
+            veiculo.data_ultima_revisao_intermediaria = data_manutencao
+        elif tipo_upper == 'DIFERENCIAL':
+             veiculo.km_ultima_revisao_diferencial = km_manutencao
+             veiculo.data_ultima_revisao_diferencial = data_manutencao
+        elif tipo_upper == 'CAMBIO':
+             veiculo.km_ultima_revisao_cambio = km_manutencao
+             veiculo.data_ultima_revisao_cambio = data_manutencao
+
+        # Cria o registro histórico da manutenção
+        nova_manutencao = Manutencao(
+            veiculo_id=veiculo.id, motorista=veiculo.motorista, placa=veiculo.placa,
+            modelo=veiculo.modelo, fabricante=veiculo.fabricante, km_atual=km_manutencao,
+            km_troca=km_manutencao, data_troca=data_manutencao,
+            observacoes=observacoes.upper() if observacoes else f"MANUTENÇÃO {tipo_upper} REGISTRADA",
+            tipo=tipo_upper
+        )
+        db.session.add(nova_manutencao)
+        db.session.flush()
+
+        # Libera os bloqueios pendentes
+        tipos_a_liberar = {
+            'PREVENTIVA': ['Preventiva', 'Intermediária'], 'INTERMEDIARIA': ['Intermediária'],
+            'DIFERENCIAL': ['Diferencial'], 'CAMBIO': ['Câmbio']
+        }.get(tipo_upper, [])
+
+        if tipos_a_liberar:
+            HistoricoBloqueio.query.filter(
+                HistoricoBloqueio.veiculo_id == veiculo.id,
+                HistoricoBloqueio.tipo_manutencao.in_(tipos_a_liberar),
+                HistoricoBloqueio.liberado == False
+            ).update({'liberado': True, 'data_liberacao': datetime.utcnow(), 'manutencao_id': nova_manutencao.id}, synchronize_session=False)
+
+        db.session.commit()
+        
+        log_obs = "via PDF" if "PDF" in str(observacoes) else "manualmente"
+        registrar_log(usuario_log, f"Registrou manutenção {tipo_upper} para {veiculo.placa} {log_obs}.")
+        
+        return (True, f"Manutenção {tipo_upper} para o veículo {veiculo.placa} registrada com sucesso!")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro no core de registro de manutenção: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return (False, "Ocorreu um erro interno ao tentar registrar a manutenção.")
 
 
 @main.route('/excluir-veiculo/<int:id>')
