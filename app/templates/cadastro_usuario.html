@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Gerenciar Usuários{% endblock %}
+
+{% block conteudo %}
+<h2 style="margin-bottom: 20px;">Gerenciar Usuários</h2>
+
+<form method="POST" action="{{ url_for('main.adicionar_usuario') }}" style="margin-bottom: 30px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {# 🔐 Proteção CSRF #}
+
+  <fieldset style="border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
+    <legend><strong>Novo Usuário</strong></legend>
+
+    <label>Nome de Login:</label><br>
+    <input type="text" name="nome" required style="width: 100%; padding: 8px;"><br><br>
+
+    <label>Senha:</label><br>
+    <input type="password" name="senha" required style="width: 100%; padding: 8px;"><br><br>
+
+    <label>Tipo:</label><br>
+    <select name="tipo" required style="width: 100%; padding: 8px;">
+      <option value="COMUM">COMUM</option>
+      <option value="MASTER">MASTER</option>
+    </select><br><br>
+
+    <button type="submit" style="background-color: #cc0000; color: white; padding: 10px 20px; border: none;">
+      Adicionar Usuário
+    </button>
+  </fieldset>
+</form>
+
+<h3>Usuários Cadastrados</h3>
+
+<table border="1" cellpadding="6" cellspacing="0" style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+  <thead style="background-color: #f0f0f0;">
+    <tr>
+      <th>ID</th>
+      <th>Nome</th>
+      <th>Login</th>
+      <th>Tipo</th>
+      <th>Ação</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if usuarios %}
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.nome }}</td>
+        <td>{{ u.usuario }}</td>
+        <td>{{ u.tipo|upper }}</td>
+        <td>
+          {% if u.usuario != 'admin' %}
+          <form method="POST" action="{{ url_for('main.remover_usuario', id=u.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {# 🔐 Proteção também na remoção #}
+            <button type="submit"
+                    onclick="return confirm('Deseja remover o usuário {{ u.usuario }}?')"
+                    style="background-color: #990000; color: white; border: none; padding: 6px 12px;">
+              Remover
+            </button>
+          </form>
+          {% else %}
+          <em>Protegido</em>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="5"><em>Nenhum usuário cadastrado.</em></td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% endblock %}
