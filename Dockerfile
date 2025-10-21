@@ -16,4 +16,5 @@ COPY . .
 EXPOSE 8080
 
 # 6. Comando para iniciar o servidor com Gunicorn
-CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-tmp-dir /dev/shm --timeout 300 app:app
+CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-tmp-dir /dev/shm --timeout 300 run:app
+
