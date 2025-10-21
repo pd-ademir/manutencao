@@ -47,13 +47,12 @@ pyinstaller-hooks-contrib==2025.4
 PyJWT==2.10.1
 pypdf==5.7.0
 pyphen==0.17.2
-pypiwin32==223
+
 python-bidi==0.6.6
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 pytz==2025.2
-pywin32==311
-pywin32-ctypes==0.2.3
+
 PyYAML==6.0.2
 reportlab==4.4.2
 requests==2.32.4
