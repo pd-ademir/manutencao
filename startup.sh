@@ -2,15 +2,13 @@
 # Para o script se um comando falhar
 set -e
 
-# Garante que o Flask saiba qual aplicação usar
-export FLASK_APP=wsgi:app
-
-echo "Aguardando o banco de dados iniciar (se aplicável)..."
-# Em um cenário real com Postgres/MySQL, adicionaríamos um 'wait-for-it.sh' aqui
+# Aponta o FLASK_APP para a "application factory", o que é o correto para o CLI do Flask.
+export FLASK_APP=app:create_app
 
 echo "Executando as migrações do banco de dados..."
+# Este comando agora será executado no contexto correto.
 flask db upgrade
 
 echo "Migrações concluídas. Iniciando o servidor Gunicorn..."
-# Inicia o servidor Gunicorn, substituindo o processo do shell
+# O Gunicorn continua usando o wsgi:app, que é o correto para ele.
 exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-tmp-dir /dev/shm --timeout 300 wsgi:app
