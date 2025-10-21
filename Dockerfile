@@ -4,17 +4,17 @@ FROM python:3.11-slim
 # 2. Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-# 3. Instala dependências do sistema operacional (Debian/Linux)
+# 3. Instala as dependências do sistema operacional com os nomes de pacotes corretos
 # Essencial para bibliotecas como WeasyPrint, OpenCV, Pillow, etc.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libpango1.0-0 \
+    libpango-1.0-0 \
     libharfbuzz0b \
     libfribidi0 \
     libjpeg62-turbo \
     libopenjp2-7 \
-    libtiff5 \
-    libgl1-mesa-glx \
+    libtiff6 \
+    libgl1 \
     # Limpa o cache do apt para manter a imagem final menor
     && rm -rf /var/lib/apt/lists/*
 
