@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
-from config import Config
+from .config import Config
 from datetime import timedelta
 
 # 1. Inicializa extensões sem app
