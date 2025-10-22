@@ -1,0 +1,29 @@
+steps:
+# Etapa 1: Construir a imagem do container usando o Dockerfile
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA', '.']
+
+# Etapa 2: Enviar a imagem construída para o Container Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA']
+
+# Etapa 3: Fazer o deploy no Cloud Run, incluindo as variáveis de ambiente
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args: [
+      'run',
+      'deploy',
+      'manutencao', # Nome do seu serviço no Cloud Run
+      '--image', 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA',
+      '--region', 'us-central1', # IMPORTANTE: Verifique e troque pela sua região
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      # --- Variáveis de Ambiente Essenciais ---
+      '--set-env-vars=SECRET_KEY=uma-chave-secreta-muito-forte-e-aleatoria',
+      '--set-env-vars=JWT_SECRET_KEY=outra-chave-secreta-ainda-mais-forte'
+      # ----------------------------------------
+    ]
+
+# Define as imagens que serão criadas por este build
+images:
+- 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA'
