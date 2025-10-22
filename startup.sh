@@ -3,23 +3,15 @@
 # set -e: Sai imediatamente se um comando falhar.
 set -ex
 
-echo "--- INICIANDO SCRIPT DE DEBUG ---"
+echo "--- INICIANDO SCRIPT DE DIAGNÓSTICO ---"
 
-echo "[DEBUG] 1. Imprimindo todas as variáveis de ambiente..."
-printenv
-echo "------------------------------------------------------"
+echo "[DIAGNÓSTICO] Pulando 'flask db upgrade' intencionalmente para teste."
 
-echo "[DEBUG] 2. Definindo FLASK_APP..."
-export FLASK_APP=app:create_app
-echo "FLASK_APP definido como: $FLASK_APP"
+# echo "[DEBUG] Imprimindo variáveis de ambiente..."
+# printenv
 
-echo "[DEBUG] 3. Tentando executar as migrações do banco de dados..."
-# Executa o comando e força a exibição de qualquer erro.
-flask db upgrade
-echo "------------------------------------------------------"
+echo "[DIAGNÓSTICO] Iniciando Gunicorn diretamente..."
 
-echo "[DEBUG] 4. Se você está vendo esta mensagem, a migração foi bem-sucedida."
-echo "Iniciando Gunicorn..."
-
-# O comando final para iniciar o servidor web
+# Tenta iniciar o servidor web diretamente, sem migrações.
+# O wsgi:app aponta para o arquivo wsgi.py, que chama a função create_app()
 exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-tmp-dir /dev/shm --timeout 300 wsgi:app
