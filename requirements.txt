@@ -33,13 +33,13 @@ pillow==11.2.1
 opencv-python==4.11.0.86
 reportlab==4.4.2
 pdf2image==1.17.0
-fpdf==1.7.2
+pdfplumber==0.5.28
 svglib==1.5.1
-pdfpumble
 
 # Suporte a datas e fusos
 pytz==2025.2
 python-dateutil==2.9.0.post0
+schedule==1.2.1
 
 # Rede e segurança
 requests==2.32.4
@@ -65,8 +65,6 @@ python-bidi==0.6.6
 arabic-reshaper==3.0.0
 docutils==0.22
 filetype==1.2.0
-altgraph==0.17.4
-oscrypto==1.3.0
 Brotli==1.1.0
 typing_extensions==4.14.0
 
