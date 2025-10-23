@@ -20,3 +20,10 @@ class Config:
     }
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+        # Pooling de conexões para melhorar desempenho
+    SQLALCHEMY_POOL_SIZE = 10
+    SQLALCHEMY_POOL_TIMEOUT = 30
+    SQLALCHEMY_POOL_RECYCLE = 1800
+    SQLALCHEMY_MAX_OVERFLOW = 20
+
