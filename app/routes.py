@@ -1,48 +1,31 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, render_template_string
 from collections import defaultdict
-from .forms import VehicleForm, ManutencaoForm
-from .models import db, Veiculo, Manutencao
-from alertas import gerar_resumo_veiculos, extrair_dados, disparar_alertas_reais
-from datetime import datetime, timedelta,date
+from .forms import VehicleForm, ManutencaoForm, PneuAplicadoForm, EstoquePneuForm
+from .models import db, Veiculo, Manutencao, Usuario, LogSistema, registrar_log, get_ip_real, PneuAplicado, EstoquePneu, HistoricoBloqueio
+from .alertas import gerar_resumo_veiculos, extrair_dados, disparar_alertas_reais
+from .permissoes import tem_permissao
+
+from datetime import datetime, timedelta, date
 from xhtml2pdf import pisa
 from io import BytesIO
 from flask_login import login_user, logout_user, login_required, current_user
-from .models import Usuario
 from functools import wraps
-from flask import abort
-from app.models import LogSistema
-from app.models import registrar_log, get_ip_real
-from flask import session
-from app.permissoes import tem_permissao
+from flask import abort, session, jsonify, send_file
 from zoneinfo import ZoneInfo
 from .utils import detectar_alteracoes
-from flask_wtf import CSRFProtect
-from flask import jsonify
-from app.forms import PneuAplicadoForm
-from app.models import PneuAplicado
-from flask import send_file
+
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from app.forms import EstoquePneuForm
-from app.models import EstoquePneu
+
 import pytz
 from dateutil.relativedelta import relativedelta
 import traceback
 import sys
 import base64
 import os
-from flask import (
-    render_template, make_response, request, redirect, url_for, flash
-)
-from .models import Veiculo, Manutencao
-from flask_login import login_required
-from .models import HistoricoBloqueio, Veiculo, Manutencao # Garanta que HistoricoBloqueio está no import
-from . import db 
-import traceback
 import pdfplumber
 import re
 from werkzeug.utils import secure_filename
-
 
 main = Blueprint('main', __name__)
 
@@ -602,7 +585,7 @@ def teste_alerta():
         flash("❌ Apenas usuários MASTER podem disparar alertas!", "danger")
         return redirect(url_for('main.index'))
 
-    from alertas import disparar_alertas_multiplos
+    from manutencao.app.alertas import disparar_alertas_multiplos
     disparar_alertas_multiplos()
     flash("🚨 Alertas enviados com sucesso!", "success")
     return redirect(url_for('main.index'))

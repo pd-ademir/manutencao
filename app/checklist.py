@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, flash, url_for
-from app.checklist_form import ChecklistForm
-from app.checklist_db import engine_checklist
+from .checklist_form import ChecklistForm
 from sqlalchemy.sql import text
 from collections import namedtuple
-from app.models import registrar_log
 from flask_login import current_user
 from flask_login import login_required, current_user
+from .checklist_db import engine_checklist
+from .models import registrar_log
+
 
 
 

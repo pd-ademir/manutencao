@@ -1,13 +1,14 @@
 from flask import current_app
 from datetime import datetime
 import requests
-from app.models import Veiculo, whatsapp_numeros
+from .models import Veiculo, whatsapp_numeros
 import requests
 import urllib.parse
 import os
-from whatsapp import enviar_mensagem_whatsapp
+from .. import whatsapp
+
 from flask_login import current_user
-from app.models import registrar_log
+from .models import registrar_log
 from dotenv import load_dotenv
 from datetime import date
 load_dotenv()

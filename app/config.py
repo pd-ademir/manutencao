@@ -1,27 +1,22 @@
 import os
 
-# Determina o diretório base do projeto
-basedir = os.path.abspath(os.path.dirname(__file__))
-
 class Config:
     """
-    Classe de configuração principal. As configurações são lidas
-    DIRETAMENTE das variáveis de ambiente injetadas pelo Cloud Run.
+    Configurações para a aplicação Flask com múltiplos bancos MySQL.
+    As credenciais e URIs são configuradas para conectar aos bancos na nuvem.
     """
-    
-    # CHAVE SECRETA (SECRET_KEY)
-    # Em produção, a aplicação irá falhar se esta variável não for definida,
-    # o que é um comportamento seguro.
-    SECRET_KEY = os.environ.get('SECRET_KEY')
-    
-    # CONFIGURAÇÃO DO BANCO DE DADOS (SQLALCHEMY_DATABASE_URI)
-    # No ambiente Cloud Run, vamos usar um diretório temporário e seguro para o SQLite.
-    # /dev/shm é um diretório em memória, ideal para um banco de dados temporário.
-    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or \
-        'sqlite:////dev/shm/app.db'
-    
-    # Desativa um recurso do SQLAlchemy que não usaremos e que consome recursos.
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # JWT Secret Key
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'uma-chave-secreta-padrao')  # Mantenha a variável de ambiente em produção
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-chave-secreta-padrao')
+
+    # Configuração para banco principal "manutencao"
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL_MANUTENCAO') or \
+        'mysql+pymysql://ornilio:@Machado2025@136.113.79.172/manutencao'
+
+    # Configurações para os outros bancos "pneus" e "checklist" via binds
+    SQLALCHEMY_BINDS = {
+        'pneus': os.environ.get('DATABASE_URL_PNEUS') or 'mysql+pymysql://ornilio:@Machado2025@136.113.79.172/pneus',
+        'checklist': os.environ.get('DATABASE_URL_CHECKLIST') or 'mysql+pymysql://ornilio:@Machado2025@136.113.79.172/checklist'
+    }
+
+    SQLALCHEMY_TRACK_MODIFICATIONS = False

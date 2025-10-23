@@ -4,9 +4,6 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import request
 from zoneinfo import ZoneInfo
-from flask_sqlalchemy import SQLAlchemy
-
-
 
 
 class Manutencao(db.Model):
@@ -28,7 +25,6 @@ class Manutencao(db.Model):
         return f'<Manutencao {self.placa} - {self.data_troca}>'
 
 
-
 class Veiculo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     placa = db.Column(db.String(10), nullable=False, unique=True)
@@ -36,14 +32,14 @@ class Veiculo(db.Model):
     fabricante = db.Column(db.String(50))
     ano = db.Column(db.String(4))
     unidade = db.Column(db.String(50), nullable=False)
-    motorista = db.Column(db.String(100), nullable=False)    
+    motorista = db.Column(db.String(100), nullable=False)
     placa_1 = db.Column(db.String(10))
-    placa_2 = db.Column(db.String(10))    
-    data_calibragem = db.Column(db.Date)    
+    placa_2 = db.Column(db.String(10))
+    data_calibragem = db.Column(db.Date)
     troca_oleo_diferencial = db.Column(db.Integer)
-    intervalo_oleo_diferencial = db.Column(db.Integer)    
+    intervalo_oleo_diferencial = db.Column(db.Integer)
     troca_oleo_cambio = db.Column(db.Integer)
-    intervalo_oleo_cambio = db.Column(db.Integer)    
+    intervalo_oleo_cambio = db.Column(db.Integer)
     km_ultima_revisao_preventiva = db.Column(db.Integer)
     km_ultima_revisao_intermediaria = db.Column(db.Integer)
     km_troca_preventiva = db.Column(db.Integer, nullable=False)
@@ -54,6 +50,7 @@ class Veiculo(db.Model):
     data_ultima_revisao_intermediaria = db.Column(db.Date)
     data_troca_oleo_diferencial = db.Column(db.Date)
     data_troca_oleo_cambio = db.Column(db.Date)
+    # Atenção: Não declarei duas vezes data_proxima_calibragem, mantive só esta:
     data_proxima_calibragem = db.Column(db.Date, nullable=True)
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     em_manutencao = db.Column(db.Boolean, default=False)
@@ -86,15 +83,8 @@ class Veiculo(db.Model):
             return (self.troca_oleo_cambio + self.intervalo_oleo_cambio) - self.km_atual
         return None
 
-    @property
-    def data_proxima_calibragem(self):
-        if self.data_calibragem:
-            return self.data_calibragem + timedelta(days=20)
-        return None
-
     def __repr__(self):
         return f'<Veiculo {self.placa}>'
-
 
 
 class Usuario(db.Model, UserMixin):
@@ -111,7 +101,6 @@ class Usuario(db.Model, UserMixin):
         return check_password_hash(self.senha_hash, senha)
 
 
-
 class LogSistema(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
@@ -119,7 +108,6 @@ class LogSistema(db.Model):
     ip = db.Column(db.String(50), nullable=True)
     data = db.Column(db.DateTime, default=datetime.utcnow)
     usuario = db.relationship('Usuario', backref='logs')
-
 
 
 def get_ip_real():
@@ -143,17 +131,12 @@ def registrar_log(usuario, acao):
     db.session.commit()
 
 
-
-
-
 # Apenas para testes iniciais — depois montamos o CRUD certo
 whatsapp_numeros = [
-      # <- insira aqui seu número de teste
+    # <- insira aqui seu número de teste
     '18981430410'
 ]
 
-
-from app.extensions import db
 
 class PneuAplicado(db.Model):
     __bind_key__ = 'pneus'
@@ -173,6 +156,7 @@ class PneuAplicado(db.Model):
     def __repr__(self):
         return f'<PneuAplicado {self.placa} - {self.referencia}>'
 
+
 class EstoquePneu(db.Model):
     __bind_key__ = 'pneus'
     __tablename__ = 'estoque_pneus'
@@ -187,31 +171,23 @@ class EstoquePneu(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default='DISPONIVEL')  # ou 'APLICADO'
 
-
     def __repr__(self):
         return f"<EstoquePneu {self.numero_fogo}>"
 
 
-
-# relatório de bloqueios e liberações de veículos
-
 class HistoricoBloqueio(db.Model):
     __tablename__ = 'historico_bloqueio'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    # CORREÇÃO: de 'veiculos.id' para 'veiculo.id'
     veiculo_id = db.Column(db.Integer, db.ForeignKey('veiculo.id'), nullable=False)
-    
-    # Detalhes do bloqueio
+
     tipo_manutencao = db.Column(db.String(100), nullable=False)
     data_bloqueio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     km_bloqueio = db.Column(db.Integer, nullable=False)
-    
-    # Detalhes da liberação
+
     liberado = db.Column(db.Boolean, default=False)
     data_liberacao = db.Column(db.DateTime, nullable=True)
-    # CORREÇÃO: de 'manutencoes.id' para 'manutencao.id'
-    manutencao_id = db.Column(db.Integer, db.ForeignKey('manutencao.id'), nullable=True) # Link para a manutenção que liberou
+    manutencao_id = db.Column(db.Integer, db.ForeignKey('manutencao.id'), nullable=True)  # Link para a manutenção que liberou
 
     veiculo = db.relationship('Veiculo', backref=db.backref('historico_bloqueios', lazy=True))
 
