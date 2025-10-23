@@ -22,24 +22,40 @@ def create_app():
     
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'sua-chave-super-secreta')
 
+    # Configurações padrões (servidor cloud)
     senha = 'Senhadobanco2025#'
-    senha_encoded = quote_plus(senha)  # Vai codificar o '#' para %23
-
-    host = '34.39.255.52'
+    senha_encoded = quote_plus(senha)  # codifica '#'
+    cloud_host = '34.39.255.52'
     user = 'Ornilio_neto'
 
-    db_uri = os.environ.get('DATABASE_URL_MANUTENCAO') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/manutencao'
+    # Configurações locais
+    local_host = 'localhost'
+    local_user = 'root'           # ajuste conforme seu local
+    local_senha = ''              # ajuste conforme seu local
+    local_senha_encoded = quote_plus(local_senha)
 
+    # Verifica se está rodando local ou no cloud
+    ambiente = os.environ.get('AMBIENTE', 'cloud')  # use 'local' para rodar local
+
+    if ambiente == 'local':
+        host = local_host
+        user = local_user
+        senha_encoded = local_senha_encoded
+    else:
+        host = cloud_host
+
+    # Monta URIs
+    db_uri = os.environ.get('DATABASE_URL_MANUTENCAO') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/manutencao'
+    pneus_uri = os.environ.get('DATABASE_URL_PNEUS') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/pneus'
+    checklist_uri = os.environ.get('DATABASE_URL_CHECKLIST') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/checklist'
+
+    print(f"Ambiente: {ambiente}")
     print("Database URI usada:", db_uri)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-
     app.config['SQLALCHEMY_BINDS'] = {
-        'pneus': os.environ.get('DATABASE_URL_PNEUS') or \
-                 f'mysql+pymysql://{user}:{senha_encoded}@{host}/pneus',
-
-        'checklist': os.environ.get('DATABASE_URL_CHECKLIST') or \
-                     f'mysql+pymysql://{user}:{senha_encoded}@{host}/checklist'
+        'pneus': pneus_uri,
+        'checklist': checklist_uri
     }
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
