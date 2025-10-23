@@ -1,7 +1,7 @@
 import schedule
 import time
 from manutencao.app.alertas import gerar_resumo_veiculos, whatsapp_numeros
-from whatsapp import enviar_mensagem_whatsapp
+from manutencao.app.whatsapp import enviar_mensagem_whatsapp
 
 def job_envio_diario():
     mensagem = gerar_resumo_veiculos()

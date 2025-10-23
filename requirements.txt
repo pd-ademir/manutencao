@@ -38,3 +38,4 @@ pillow==11.2.1
 pymysql
 requests
 xhtml2pdf
+pytz
