@@ -35,3 +35,4 @@ weasyprint==66.0
 opencv-python==4.11.0.86
 pypdf==5.7.0
 pillow==11.2.1
+pymysql
