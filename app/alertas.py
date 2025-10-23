@@ -5,8 +5,7 @@ from .models import Veiculo, whatsapp_numeros
 import requests
 import urllib.parse
 import os
-from .. import whatsapp
-
+from manutencao import whatsapp
 from flask_login import current_user
 from .models import registrar_log
 from dotenv import load_dotenv
