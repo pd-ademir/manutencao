@@ -7,6 +7,8 @@ WORKDIR /app
 # 3. Instala as dependências do sistema operacional
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    pkg-config \
+    libcairo2-dev \
     libpango-1.0-0 \
     libharfbuzz0b \
     libfribidi0 \
@@ -14,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libopenjp2-7 \
     libtiff6 \
     libgl1 \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # 4. Copia apenas o necessário para instalar as dependências Python
