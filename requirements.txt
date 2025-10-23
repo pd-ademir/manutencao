@@ -35,6 +35,7 @@ reportlab==4.4.2
 pdf2image==1.17.0
 fpdf==1.7.2
 svglib==1.5.1
+pdfpumble
 
 # Suporte a datas e fusos
 pytz==2025.2
