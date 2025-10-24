@@ -26,6 +26,7 @@ import os
 import pdfplumber
 import re
 from werkzeug.utils import secure_filename
+from sqlalchemy import or_, func
 
 main = Blueprint('main', __name__)
 
@@ -1223,3 +1224,141 @@ def plano_manutencao():
         current_date=date.today() # Adicionado para cálculos no template
     )
 
+
+
+# ---------------------------------------------------------------------------
+# ROTA PARA O DASHBOARD DE KPIS - VERSÃO FINAL COM TRATAMENTO DE NULOS
+# ---------------------------------------------------------------------------
+
+@main.route('/kpis')
+@login_required
+def kpis():
+    """
+    Renderiza a página principal do dashboard de KPIs.
+    Esta função agora calcula os totais para os cartões e prepara os filtros.
+    """
+    # 1. Obter o filtro de unidade da URL
+    unidade_selecionada = request.args.get('unidade', '')
+
+    # 2. Query base para os veículos, aplicando o filtro se necessário
+    query = Veiculo.query
+    if unidade_selecionada:
+        query = query.filter(Veiculo.unidade == unidade_selecionada)
+
+    # 3. Calcular os status dos veículos para os cartões
+    veiculos_ok = 0
+    veiculos_radar = 0
+    veiculos_vencidos = 0
+    lista_vencidos = []
+    lista_radar = []
+
+    for v in query.all():
+        # Lógica para determinar o status de cada veículo
+        is_vencido = (
+            (v.km_para_preventiva is not None and v.km_para_preventiva < 0) or
+            (v.km_para_intermediaria is not None and v.km_para_intermediaria < 0) or
+            (v.km_para_diferencial is not None and v.km_para_diferencial < 0) or
+            (v.km_para_cambio is not None and v.km_para_cambio < 0)
+        )
+        is_radar = (
+            (v.km_para_preventiva is not None and 0 <= v.km_para_preventiva <= 5000) or
+            (v.km_para_intermediaria is not None and 0 <= v.km_para_intermediaria <= 5000) or
+            (v.km_para_diferencial is not None and 0 <= v.km_para_diferencial <= 5000) or
+            (v.km_para_cambio is not None and 0 <= v.km_para_cambio <= 5000)
+        )
+
+        if is_vencido:
+            veiculos_vencidos += 1
+            lista_vencidos.append(v)
+        elif is_radar:
+            veiculos_radar += 1
+            lista_radar.append(v)
+        else:
+            veiculos_ok += 1
+
+    # 4. Obter a frota total (disponível)
+    frota_disponivel = query.count()
+    
+    # 5. Obter lista de unidades para o dropdown do filtro
+    unidades = [row[0] for row in db.session.query(Veiculo.unidade).distinct().order_by(Veiculo.unidade) if row[0]]
+
+    # 6. Renderizar o template com todos os dados
+    return render_template(
+        'kpis.html',
+        unidades=unidades,
+        unidade_selecionada=unidade_selecionada,
+        veiculos_ok=veiculos_ok,
+        veiculos_radar=veiculos_radar,
+        veiculos_vencidos=veiculos_vencidos,
+        frota_disponivel=frota_disponivel,
+        lista_vencidos=lista_vencidos,
+        lista_radar=lista_radar
+    )
+
+
+@main.route('/kpi/data')
+@login_required
+def kpi_data():
+    """
+    Endpoint de API que fornece os dados JSON para os gráficos,
+    respeitando o filtro de unidade.
+    """
+    # 1. Obter o filtro de unidade da URL
+    unidade_selecionada = request.args.get('unidade', '')
+    
+    # 2. Query base para veículos, aplicando filtro
+    query = Veiculo.query
+    if unidade_selecionada:
+        query = query.filter(Veiculo.unidade == unidade_selecionada)
+
+    # 3. Expressões com COALESCE para tratar valores nulos como 0
+    km_atual = func.coalesce(Veiculo.km_atual, 0)
+    preventiva_vencida = (func.coalesce(Veiculo.km_ultima_revisao_preventiva, 0) + func.coalesce(Veiculo.km_troca_preventiva, 0) - km_atual) < 0
+    intermediaria_vencida = (func.coalesce(Veiculo.km_ultima_revisao_intermediaria, 0) + func.coalesce(Veiculo.km_troca_intermediaria, 0) - km_atual) < 0
+    cambio_vencido = (func.coalesce(Veiculo.troca_oleo_cambio, 0) + func.coalesce(Veiculo.intervalo_oleo_cambio, 0) - km_atual) < 0
+    diferencial_vencido = (func.coalesce(Veiculo.troca_oleo_diferencial, 0) + func.coalesce(Veiculo.intervalo_oleo_diferencial, 0) - km_atual) < 0
+
+    # 4. Dados para Gráfico: Manutenções Vencidas por Tipo
+    vencidas_preventiva = query.filter(preventiva_vencida).count()
+    vencidas_intermediaria = query.filter(intermediaria_vencida).count()
+    vencidas_cambio = query.filter(cambio_vencido).count()
+    vencidas_diferencial = query.filter(diferencial_vencido).count()
+
+    manutencoes_vencidas_por_tipo = {
+        'labels': ['Preventiva', 'Intermediária', 'Câmbio', 'Diferencial'],
+        'data': [vencidas_preventiva, vencidas_intermediaria, vencidas_cambio, vencidas_diferencial]
+    }
+
+    # 5. Dados para Gráfico: Motivos de Bloqueio
+    bloqueios_query_base = HistoricoBloqueio.query.filter_by(liberado=False)
+    if unidade_selecionada:
+        bloqueios_query_base = bloqueios_query_base.join(Veiculo).filter(Veiculo.unidade == unidade_selecionada)
+        
+    bloqueios_agrupados = bloqueios_query_base.group_by(HistoricoBloqueio.tipo_manutencao).with_entities(
+        HistoricoBloqueio.tipo_manutencao,
+        func.count(HistoricoBloqueio.id)
+    ).all()
+
+    bloqueios_por_motivo = {
+        'labels': [item[0].replace('_', ' ').title() for item in bloqueios_agrupados],
+        'data': [item[1] for item in bloqueios_agrupados]
+    }
+
+    # 6. Dados para Gráfico: KM Rodado por Unidade
+    # Nota: Este gráfico específico não é filtrado por unidade para manter a comparação.
+    km_por_unidade_query = db.session.query(
+        Veiculo.unidade,
+        func.sum(func.coalesce(Veiculo.km_atual, 0))
+    ).group_by(Veiculo.unidade).order_by(func.sum(func.coalesce(Veiculo.km_atual, 0)).desc()).limit(10).all()
+
+    km_por_unidade = {
+        'labels': [item[0] if item[0] else 'N/A' for item in km_por_unidade_query],
+        'data': [float(item[1]) for item in km_por_unidade_query]
+    }
+
+    # 7. Retorna todos os dados para os gráficos
+    return jsonify({
+        'manutencoesVencidasPorTipo': manutencoes_vencidas_por_tipo,
+        'bloqueiosPorMotivo': bloqueios_por_motivo,
+        'kmPorUnidade': km_por_unidade
+    })

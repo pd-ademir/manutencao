@@ -26,8 +26,8 @@ steps:
       '--allow-unauthenticated',
       '--min-instances=1',
       # --- NOVOS LIMITES DE RECURSOS ---
-      '--memory=2Gi',
-      '--cpu=2',
+      '--memory=8Gi',
+      '--cpu=4',
       # --- Configuração de Segredos ---
       '--set-secrets=SECRET_KEY=SECRET_KEY:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest,DATABASE_URI=DATABASE_URI:latest'
     ]

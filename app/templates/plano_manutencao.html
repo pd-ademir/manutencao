@@ -7,28 +7,27 @@
 
 {% block conteudo %}
 <div class="container-fluid">
-    <h1 class="mb-4">🗓️ Plano de Manutenção Preventiva</h1>
-    <p>Visualize as próximas manutenções para todos os veículos, ordenadas pela urgência.</p>
+    <h1 class="mb-4">🗓️ Plano de Manutenção</h1>
+    <p>Confira as próximas manutenções da frota</p>
 
-    <!-- Seção de Filtros -->
+    <!-- Seção de Filtros Otimizada com Filtro Automático -->
     <div class="card shadow mb-4">
-        <div class="card-header"><h6 class="m-0 font-weight-bold text-primary">Filtros</h6></div>
+        <div class="card-header"><h6 class="m-0 font-weight-bold text-primary">Filtro de Unidade</h6></div>
         <div class="card-body">
             <form method="GET" action="{{ url_for('main.plano_manutencao') }}">
-                <div class="row align-items-end">
-                    <div class="col-md-4">
-                        <label for="unidade" class="form-label">Filtrar por Unidade:</label>
-                        <select name="unidade" id="unidade" class="form-select">
-                            <option value="">Todas as Unidades</option>
+                <div class="row">
+                    <div class="col-md-5 col-lg-4">
+                        <label for="unidade" class="form-label fw-bold">Selecione a Unidade:</label>
+                        <select name="unidade" id="unidade" class="form-select" onchange="this.form.submit()">
+                            <option value="">-- Todas as Unidades --</option>
                             {% for un in unidades %}
                             <option value="{{ un }}" {% if un == unidade_selecionada %}selected{% endif %}>{{ un }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Aplicar</button></div>
-                    <div class="col-md-2"><a href="{{ url_for('main.plano_manutencao') }}" class="btn btn-secondary w-100">Limpar</a></div>
                 </div>
             </form>
+            <br>
         </div>
     </div>
 
@@ -106,7 +105,7 @@
                                 {% endif %}
                             </td>
 
-                           
+                            
                         </tr>
                         {% else %}
                         <tr>
