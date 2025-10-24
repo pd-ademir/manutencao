@@ -18,6 +18,8 @@ steps:
       '--region', 'us-central1', # IMPORTANTE: Verifique e troque pela sua região
       '--platform', 'managed',
       '--allow-unauthenticated',
+      # --- Configuração de performance: Mínimo de 1 instância para evitar Cold Starts ---
+      '--min-instances=1',
       # --- Variáveis de Ambiente Essenciais (sintaxe correta) ---
       '--set-env-vars=SECRET_KEY=uma-chave-secreta-muito-forte-e-aleatoria,JWT_SECRET_KEY=outra-chave-secreta-ainda-mais-forte'
     ]
