@@ -7,23 +7,41 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA']
 
-# Etapa 3: Fazer o deploy no Cloud Run com as variáveis de ambiente CORRETAS
+# Etapa 3: Executar migrações do banco de dados
+- name: 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA'
+  entrypoint: 'flask'
+  args: ['db', 'upgrade']
+  secretEnv: ['SECRET_KEY', 'JWT_SECRET_KEY', 'DATABASE_URI']
+
+# Etapa 4: Fazer o deploy da nova versão com mais recursos
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: [
       'run',
       'deploy',
-      'manutencao', # Nome do seu serviço no Cloud Run
+      'manutencao', 
       '--image', 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA',
-      '--region', 'us-central1', # IMPORTANTE: Verifique e troque pela sua região
+      '--region', 'us-central1',
       '--platform', 'managed',
       '--allow-unauthenticated',
-      # --- Configuração de performance: Mínimo de 1 instância para evitar Cold Starts ---
       '--min-instances=1',
-      # --- Variáveis de Ambiente Essenciais (sintaxe correta) ---
-      '--set-env-vars=SECRET_KEY=uma-chave-secreta-muito-forte-e-aleatoria,JWT_SECRET_KEY=outra-chave-secreta-ainda-mais-forte'
+      # --- NOVOS LIMITES DE RECURSOS ---
+      '--memory=2Gi',
+      '--cpu=2',
+      # --- Configuração de Segredos ---
+      '--set-secrets=SECRET_KEY=SECRET_KEY:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest,DATABASE_URI=DATABASE_URI:latest'
     ]
 
 # Define as imagens que serão criadas por este build
 images:
 - 'gcr.io/$PROJECT_ID/manutencao:$COMMIT_SHA'
+
+# Configuração de Acesso ao Secret Manager
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/SECRET_KEY/versions/latest
+    env: 'SECRET_KEY'
+  - versionName: projects/$PROJECT_ID/secrets/JWT_SECRET_KEY/versions/latest
+    env: 'JWT_SECRET_KEY'
+  - versionName: projects/$PROJECT_ID/secrets/DATABASE_URI/versions/latest
+    env: 'DATABASE_URI'
