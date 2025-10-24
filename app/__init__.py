@@ -5,11 +5,15 @@ from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from urllib.parse import quote_plus
+from dotenv import load_dotenv
 
 from .models import Usuario
 from .extensions import db, migrate, login_manager
 from .utils import format_km
 from .checklist import checklist_bp
+
+# Carrega variáveis do .env (se existir)
+load_dotenv()
 
 csrf = CSRFProtect()
 
@@ -21,33 +25,26 @@ def create_app():
     app = Flask(__name__)
     
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'sua-chave-super-secreta')
-
-    # Configurações padrões (servidor cloud)
-    senha = 'Senhadobanco2025#'
-    senha_encoded = quote_plus(senha)  # codifica '#'
-    cloud_host = '34.39.255.52'
-    user = 'Ornilio_neto'
-
-    # Configurações locais
-    local_host = 'localhost'
-    local_user = 'root'           # ajuste conforme seu local
-    local_senha = ''              # ajuste conforme seu local
-    local_senha_encoded = quote_plus(local_senha)
+    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-chave-secreta-padrao')
 
     # Verifica se está rodando local ou no cloud
-    ambiente = os.environ.get('AMBIENTE', 'cloud')  # use 'local' para rodar local
+    ambiente = os.environ.get('AMBIENTE', 'cloud')  # padrão é 'cloud'
 
     if ambiente == 'local':
-        host = local_host
-        user = local_user
-        senha_encoded = local_senha_encoded
+        user = os.environ.get('LOCAL_DB_USER', 'root')
+        senha = os.environ.get('LOCAL_DB_PASSWORD', '')
+        host = os.environ.get('LOCAL_DB_HOST', 'localhost')
     else:
-        host = cloud_host
+        user = os.environ.get('CLOUD_DB_USER', 'Ornilio_neto')
+        senha = os.environ.get('CLOUD_DB_PASSWORD', 'Senhadobanco2025#')
+        host = os.environ.get('CLOUD_DB_HOST', '34.39.255.52')
+
+    senha_encoded = quote_plus(senha)
 
     # Monta URIs
-    db_uri = os.environ.get('DATABASE_URL_MANUTENCAO') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/manutencao'
-    pneus_uri = os.environ.get('DATABASE_URL_PNEUS') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/pneus'
-    checklist_uri = os.environ.get('DATABASE_URL_CHECKLIST') or f'mysql+pymysql://{user}:{senha_encoded}@{host}/checklist'
+    db_uri = f'mysql+pymysql://{user}:{senha_encoded}@{host}/manutencao'
+    pneus_uri = f'mysql+pymysql://{user}:{senha_encoded}@{host}/pneus'
+    checklist_uri = f'mysql+pymysql://{user}:{senha_encoded}@{host}/checklist'
 
     print(f"Ambiente: {ambiente}")
     print("Database URI usada:", db_uri)
@@ -59,6 +56,12 @@ def create_app():
     }
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Pooling para performance
+    app.config['SQLALCHEMY_POOL_SIZE'] = 10
+    app.config['SQLALCHEMY_POOL_TIMEOUT'] = 30
+    app.config['SQLALCHEMY_POOL_RECYCLE'] = 1800
+    app.config['SQLALCHEMY_MAX_OVERFLOW'] = 20
 
     db.init_app(app)
     migrate.init_app(app, db)

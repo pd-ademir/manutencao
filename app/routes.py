@@ -1179,3 +1179,47 @@ def verificar_e_registrar_bloqueio(veiculo):
             print(f"NOVO BLOQUEIO REGISTRADO: Veículo {veiculo.placa}, Tipo: {tipo_vencido}")
             
     db.session.commit()
+
+
+@main.route('/plano-manutencao')
+@login_required
+@requer_tipo("master", "comum", "teste", "visualizador")
+def plano_manutencao():
+    """
+    Página interativa para o plano de manutenção com filtros e paginação.
+    """
+    # 1. Obter parâmetros da URL
+    page = request.args.get('page', 1, type=int)
+    unidade_selecionada = request.args.get('unidade', '')
+
+    # 2. Obter lista de unidades únicas para o filtro
+    unidades_query = db.session.query(Veiculo.unidade).distinct().order_by(Veiculo.unidade)
+    unidades = [row[0] for row in unidades_query if row[0]]
+
+    # 3. Construir a query base
+    query = Veiculo.query
+
+    # 4. Aplicar o filtro de unidade, se um foi selecionado
+    if unidade_selecionada:
+        query = query.filter(Veiculo.unidade == unidade_selecionada)
+        
+    # 5. Ordenar os resultados
+    from sqlalchemy import func
+    km_restante_expr = (
+        func.coalesce(Veiculo.km_ultima_revisao_preventiva, 0) + 
+        func.coalesce(Veiculo.km_troca_preventiva, 1)
+    ) - func.coalesce(Veiculo.km_atual, 0)
+    query = query.order_by(km_restante_expr.asc())
+
+    # 6. Paginar os resultados
+    pagination = query.paginate(page=page, per_page=50, error_out=False)
+
+    # 7. Renderizar o template com os dados
+    return render_template(
+        'plano_manutencao.html',
+        pagination=pagination,
+        unidades=unidades,
+        unidade_selecionada=unidade_selecionada,
+        current_date=date.today() # Adicionado para cálculos no template
+    )
+

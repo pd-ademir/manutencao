@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block titulo %}Plano de Manutenção Preventiva{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/plano_manutencao.css') }}">
+{% endblock %}
+
+{% block conteudo %}
+<div class="container-fluid">
+    <h1 class="mb-4">🗓️ Plano de Manutenção Preventiva</h1>
+    <p>Visualize as próximas manutenções para todos os veículos, ordenadas pela urgência.</p>
+
+    <!-- Seção de Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header"><h6 class="m-0 font-weight-bold text-primary">Filtros</h6></div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.plano_manutencao') }}">
+                <div class="row align-items-end">
+                    <div class="col-md-4">
+                        <label for="unidade" class="form-label">Filtrar por Unidade:</label>
+                        <select name="unidade" id="unidade" class="form-select">
+                            <option value="">Todas as Unidades</option>
+                            {% for un in unidades %}
+                            <option value="{{ un }}" {% if un == unidade_selecionada %}selected{% endif %}>{{ un }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Aplicar</button></div>
+                    <div class="col-md-2"><a href="{{ url_for('main.plano_manutencao') }}" class="btn btn-secondary w-100">Limpar</a></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Veículos -->
+    <div class="card shadow">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 table-excel-view" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Veículo</th>
+                            <th class="text-center">Preventiva</th>
+                            <th class="text-center">Intermediária</th>
+                            <th class="text-center">Diferencial</th>
+                            <th class="text-center">Câmbio</th>
+                            <th class="text-center">Rev. Carreta</th>
+                           
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for veiculo in pagination.items %}
+                        <tr>
+                            <td class="veiculo-info">
+                                <h6 class="mb-0"><strong>{{ veiculo.placa }}</strong></h6>
+                                <small class="text-muted d-block">{{ veiculo.motorista or 'Motorista não definido' }}</small>
+                                <span class="badge bg-secondary">{{ veiculo.unidade }}</span>
+                            </td>
+                            
+                            {# LÓGICA DE MANUTENÇÃO REPETÍVEL #}
+                            {% macro render_manutencao(km_rest, intervalo, ult_rev, km_atual, warning_threshold) %}
+                                {% set intervalo = intervalo or 1 %}
+                                {% set ult_rev = ult_rev or 0 %}
+                                {% set km_atual = km_atual or 0 %}
+                                {% set raw_prog = (((km_atual - ult_rev) / intervalo) * 100)|int %}
+                                {% if raw_prog > 100 %}{% set prog = 100 %}{% elif raw_prog < 0 %}{% set prog = 0 %}{% else %}{% set prog = raw_prog %}{% endif %}
+
+                                {% if km_rest is not none and intervalo > 1 %}
+                                    {% if km_rest <= 0 %}{% set cor = 'danger' %}
+                                    {% elif km_rest <= warning_threshold %}{% set cor = 'warning' %}
+                                    {% else %}{% set cor = 'success' %}{% endif %}
+                                    <div class="manut-info text-center">
+                                        Próx: <strong>{{ (ult_rev + intervalo)|format_km }}</strong><br>
+                                        <span class="km-restantes">({{ ('+' if km_rest > 0 else '') ~ km_rest|format_km }} km)</span>
+                                    </div>
+                                    <div class="progress-wrapper"><div class="progress mt-1"><div class="progress-bar bg-{{cor}}" role="progressbar" style="width: {{ prog }}%;" aria-valuenow="{{ prog }}">{{ prog }}%</div></div></div>
+                                {% else %}<span class="text-muted">N/A</span>{% endif %}
+                            {% endmacro %}
+
+                            {# PREVENTIVA #}
+                            <td>{{ render_manutencao(veiculo.km_para_preventiva, veiculo.km_troca_preventiva, veiculo.km_ultima_revisao_preventiva, veiculo.km_atual, 5000) }}</td>
+
+                            {# INTERMEDIÁRIA #}
+                            <td>{{ render_manutencao(veiculo.km_para_intermediaria, veiculo.km_troca_intermediaria, veiculo.km_ultima_revisao_intermediaria, veiculo.km_atual, 3000) }}</td>
+
+                            {# DIFERENCIAL #}
+                            <td>{{ render_manutencao(veiculo.km_para_diferencial, veiculo.intervalo_oleo_diferencial, veiculo.troca_oleo_diferencial, veiculo.km_atual, 5000) }}</td>
+
+                            {# CÂMBIO #}
+                            <td>{{ render_manutencao(veiculo.km_para_cambio, veiculo.intervalo_oleo_cambio, veiculo.troca_oleo_cambio, veiculo.km_atual, 5000) }}</td>
+
+                            {# REVISÃO CARRETA #}
+                            <td class="text-center">
+                                {% if veiculo.data_proxima_revisao_carreta %}
+                                    {% set dias = (veiculo.data_proxima_revisao_carreta - current_date).days %}
+                                    <h6 class="mb-0">
+                                        {% if dias < 0 %}<strong class="text-danger">Vencido há {{ dias|abs }} dias</strong>
+                                        {% elif dias == 0 %}<strong class="text-danger">Vence Hoje!</strong>
+                                        {% elif dias == 1 %}<strong class="text-warning">Vence Amanhã</strong>
+                                        {% else %}<strong>{{ dias }} dias</strong> restantes
+                                        {% endif %}
+                                    </h6>
+                                    <small class="text-muted">{{ veiculo.data_proxima_revisao_carreta.strftime('%d/%m/%Y') }}</small>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+
+                           
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">Nenhum veículo encontrado com os filtros aplicados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controles de Paginação -->
+    {% if pagination.pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div class="text-muted">
+            Página {{ pagination.page }} de {{ pagination.pages }}. (Total: {{ pagination.total }} veículos)
+        </div>
+        <nav aria-label="Page navigation">
+            <ul class="pagination mb-0">
+                {% if pagination.has_prev %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('main.plano_manutencao', page=pagination.prev_num, unidade=unidade_selecionada) }}">Anterior</a></li>
+                {% else %}
+                    <li class="page-item disabled"><a class="page-link" href="#">Anterior</a></li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if pagination.page == page_num %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ page_num }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('main.plano_manutencao', page=page_num, unidade=unidade_selecionada) }}">{{ page_num }}</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link" href="#">&hellip;</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('main.plano_manutencao', page=pagination.next_num, unidade=unidade_selecionada) }}">Próxima</a></li>
+                {% else %}
+                    <li class="page-item disabled"><a class="page-link" href="#">Próxima</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% elif pagination.total > 0 %}
+        <div class="text-center text-muted mt-4">
+            Exibindo todos os {{ pagination.total }} veículos.
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
