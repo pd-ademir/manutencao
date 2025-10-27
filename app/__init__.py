@@ -12,8 +12,12 @@ from .extensions import db, migrate, login_manager
 from .utils import format_km
 from .checklist import checklist_bp
 
-# Carrega variáveis do .env (se existir)
-load_dotenv()
+from pathlib import Path
+
+# Detecta ambiente e carrega o .env correspondente
+ambiente = os.environ.get('AMBIENTE', 'cloud')
+env_path = Path('.') / ('.env' if ambiente == 'local' else '.env.prod')
+load_dotenv(dotenv_path=env_path)
 
 csrf = CSRFProtect()
 

@@ -27,6 +27,10 @@ import pdfplumber
 import re
 from werkzeug.utils import secure_filename
 from sqlalchemy import or_, func
+from flask_wtf import FlaskForm
+import csv
+import io
+
 
 main = Blueprint('main', __name__)
 
@@ -185,6 +189,130 @@ def extract_os():
     # A página agora serve apenas para fazer o upload
     return render_template('extract_os.html')
 
+
+
+# --------------------------------------------------------------------------
+# ROTA PARA ATUALIZAÇÃO DE KM EM MASSA (VERSÃO MELHORADA COM DETECÇÃO DE DELIMITADOR)
+# --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# ROTA PARA ATUALIZAÇÃO DE KM EM MASSA (VERSÃO COM FORMATAÇÃO CORRETA)
+# --------------------------------------------------------------------------
+
+from markupsafe import Markup
+
+
+@main.route('/atualizar-km-massa', methods=['GET', 'POST'])
+@login_required
+@requer_tipo("master", "comum")
+def atualizar_km_massa():
+    form = FlaskForm() # Proteção CSRF
+    if request.method == 'POST':
+        if 'csv_file' not in request.files:
+            flash('Nenhum arquivo enviado.', 'danger')
+            return redirect(request.url)
+
+        file = request.files['csv_file']
+
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+
+        if not file.filename.lower().endswith('.csv'):
+            flash('Arquivo inválido. Por favor, envie um arquivo .csv', 'danger')
+            return redirect(request.url)
+            
+        try:
+            file.seek(0)
+            text_stream = io.TextIOWrapper(file, encoding='utf-8-sig')
+
+            try:
+                primeira_linha = text_stream.readline()
+                if not primeira_linha:
+                    flash("O arquivo CSV está vazio.", "warning")
+                    return redirect(url_for('main.lista_placas'))
+                
+                dialect = csv.Sniffer().sniff(primeira_linha)
+                text_stream.seek(0)
+            except (csv.Error, StopIteration):
+                dialect = 'excel'
+                text_stream.seek(0)
+
+            csv_reader = csv.reader(text_stream, dialect)
+            header = [h.strip().lower() for h in next(csv_reader)]
+
+            if 'placa' not in header or 'km_atual' not in header:
+                flash('O cabeçalho do arquivo CSV deve conter as colunas "placa" e "km_atual".', 'danger')
+                return redirect(url_for('main.lista_placas'))
+
+            placa_idx = header.index('placa')
+            km_idx = header.index('km_atual')
+
+            sucessos = 0
+            erros_validacao = []
+            placas_nao_encontradas = []
+
+            for row_num, row in enumerate(csv_reader, start=2):
+                if not any(field.strip() for field in row): continue 
+                
+                if len(row) <= max(placa_idx, km_idx):
+                    erros_validacao.append(f"Linha {row_num}: A linha está mal formatada ou incompleta.")
+                    continue
+
+                placa = row[placa_idx].strip().upper()
+                km_novo_str = row[km_idx].strip()
+
+                if not placa or not km_novo_str:
+                    erros_validacao.append(f"Linha {row_num}: Placa ou KM em branco.")
+                    continue
+
+                if not km_novo_str.isdigit():
+                    erros_validacao.append(f"Linha {row_num}: KM inválido para a placa {placa} ('{km_novo_str}').")
+                    continue
+                
+                km_novo = int(km_novo_str)
+                veiculo = Veiculo.query.filter_by(placa=placa).first()
+
+                if not veiculo:
+                    placas_nao_encontradas.append(placa)
+                    continue
+                
+                if km_novo < (veiculo.km_atual or 0):
+                    erros_validacao.append(f"Linha {row_num}: KM da placa {placa} ({km_novo}) é menor que o atual ({veiculo.km_atual}). Atualização ignorada.")
+                    continue
+
+                if km_novo != veiculo.km_atual:
+                    veiculo.km_atual = km_novo
+                    veiculo.data_ultima_atualizacao_km = datetime.now(pytz.timezone("America/Fortaleza"))
+                    registrar_log(current_user, f"Atualizou KM em massa do veículo {veiculo.placa} para {km_novo}")
+                    sucessos += 1
+
+            db.session.commit()
+
+            if sucessos > 0:
+                 flash(f"{sucessos} veículo(s) teve(tiveram) o KM atualizado com sucesso.", 'success')
+
+            if erros_validacao or placas_nao_encontradas:
+                mensagem_erro_html = "<strong>Ocorreram os seguintes problemas durante a atualização:</strong><ul>"
+                for erro in erros_validacao:
+                    mensagem_erro_html += f"<li>{erro}</li>"
+                if placas_nao_encontradas:
+                    mensagem_erro_html += f"<li><strong>Placas não encontradas no sistema:</strong> {', '.join(sorted(list(set(placas_nao_encontradas))))}</li>"
+                mensagem_erro_html += "</ul>"
+                
+                # --- AQUI ESTÁ A CORREÇÃO DEFINITIVA ---
+                flash(Markup(mensagem_erro_html), 'warning')
+            
+            if sucessos == 0 and not erros_validacao and not placas_nao_encontradas:
+                flash("Nenhuma alteração foi necessária. Os KMs no arquivo são iguais ou inferiores aos já registrados.", "info")
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro inesperado ao processar o arquivo: {e}', 'danger')
+            traceback.print_exc(file=sys.stderr)
+
+        return redirect(url_for('main.lista_placas'))
+
+    return render_template('atualizar_km_massa.html', form=form)
 
 
 @main.route('/atualizar-km/<int:id>', methods=['POST'])
